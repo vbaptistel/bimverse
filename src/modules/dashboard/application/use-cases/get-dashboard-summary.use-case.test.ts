@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest";
+
+import type {
+  DashboardRepositoryPort,
+  DashboardSummary,
+} from "@/modules/dashboard/application/ports/dashboard-repository.port";
+import { GetDashboardSummaryUseCase } from "@/modules/dashboard/application/use-cases/get-dashboard-summary.use-case";
+
+class FakeDashboardRepository implements DashboardRepositoryPort {
+  async getSummary(): Promise<DashboardSummary> {
+    return {
+      totalProposals: 10,
+      wonProposals: 4,
+      lostProposals: 2,
+      conversionRate: 0.66,
+      estimatedValueTotalBrl: 120000,
+      wonValueTotalBrl: 50000,
+      byStatus: [
+        { status: "enviada", count: 3 },
+        { status: "ganha", count: 4 },
+      ],
+      byCompany: [
+        {
+          companyId: "company-1",
+          companyName: "EGIS",
+          proposalCount: 5,
+          totalEstimatedValueBrl: 70000,
+        },
+      ],
+    };
+  }
+}
+
+describe("GetDashboardSummaryUseCase", () => {
+  it("retorna consolidado de indicadores", async () => {
+    const useCase = new GetDashboardSummaryUseCase(new FakeDashboardRepository());
+
+    const summary = await useCase.execute();
+
+    expect(summary.totalProposals).toBe(10);
+    expect(summary.byCompany[0]?.companyName).toBe("EGIS");
+  });
+});
