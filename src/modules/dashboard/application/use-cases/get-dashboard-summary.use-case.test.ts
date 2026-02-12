@@ -24,7 +24,11 @@ class FakeDashboardRepository implements DashboardRepositoryPort {
           companyId: "company-1",
           companyName: "EGIS",
           proposalCount: 5,
+          wonProposals: 3,
+          lostProposals: 1,
+          conversionRate: 0.75,
           totalEstimatedValueBrl: 70000,
+          wonValueTotalBrl: 50000,
         },
       ],
     };

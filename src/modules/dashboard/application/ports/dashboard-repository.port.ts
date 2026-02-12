@@ -7,7 +7,11 @@ export interface DashboardCompanyMetric {
   companyId: string;
   companyName: string;
   proposalCount: number;
+  wonProposals: number;
+  lostProposals: number;
+  conversionRate: number;
   totalEstimatedValueBrl: number;
+  wonValueTotalBrl: number;
 }
 
 export interface DashboardSummary {

@@ -1,4 +1,4 @@
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { CircleHelp, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,12 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function SectionCards({
   cards,
 }: {
   cards: {
     title: string;
+    titleTip?: string;
     value: string;
     description?: string;
     trend?: "up" | "down";
@@ -28,7 +30,25 @@ export function SectionCards({
       {cards.map((card) => (
         <Card key={card.title}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              <span className="inline-flex items-center gap-1.5">
+                {card.title}
+                {card.titleTip != null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center text-muted-foreground"
+                        aria-label={`Detalhes sobre ${card.title}`}
+                      >
+                        <CircleHelp className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={6}>{card.titleTip}</TooltipContent>
+                  </Tooltip>
+                )}
+              </span>
+            </CardTitle>
             {card.trend != null && card.trendValue != null && (
               <CardAction>
                 <Badge

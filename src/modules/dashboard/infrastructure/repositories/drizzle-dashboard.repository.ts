@@ -30,8 +30,10 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
           sql<number>`COUNT(*) FILTER (WHERE ${proposals.status} = 'ganha')`,
         lostProposals:
           sql<number>`COUNT(*) FILTER (WHERE ${proposals.status} = 'perdida')`,
-        estimatedValueTotalBrl: sql<string>`COALESCE(SUM(${proposals.estimatedValueBrl}), 0)`,
-        wonValueTotalBrl: sql<string>`COALESCE(SUM(${proposals.finalValueBrl}) FILTER (WHERE ${proposals.status} = 'ganha'), 0)`,
+        estimatedValueTotalBrl:
+          sql<string>`COALESCE(SUM(${proposals.estimatedValueBrl}) FILTER (WHERE ${proposals.status} NOT IN ('perdida', 'cancelada')), 0)`,
+        wonValueTotalBrl:
+          sql<string>`COALESCE(SUM(COALESCE(${proposals.finalValueBrl}, ${proposals.estimatedValueBrl})) FILTER (WHERE ${proposals.status} = 'ganha'), 0)`,
       })
       .from(proposals);
 
@@ -48,7 +50,14 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
         companyId: companies.id,
         companyName: companies.name,
         proposalCount: sql<number>`COUNT(${proposals.id})`,
-        totalEstimatedValueBrl: sql<string>`COALESCE(SUM(${proposals.estimatedValueBrl}), 0)`,
+        wonProposals:
+          sql<number>`COUNT(${proposals.id}) FILTER (WHERE ${proposals.status} = 'ganha')`,
+        lostProposals:
+          sql<number>`COUNT(${proposals.id}) FILTER (WHERE ${proposals.status} = 'perdida')`,
+        totalEstimatedValueBrl:
+          sql<string>`COALESCE(SUM(${proposals.estimatedValueBrl}) FILTER (WHERE ${proposals.status} NOT IN ('perdida', 'cancelada')), 0)`,
+        wonValueTotalBrl:
+          sql<string>`COALESCE(SUM(COALESCE(${proposals.finalValueBrl}, ${proposals.estimatedValueBrl})) FILTER (WHERE ${proposals.status} = 'ganha'), 0)`,
       })
       .from(companies)
       .leftJoin(proposals, eq(proposals.companyId, companies.id))
@@ -68,10 +77,20 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
       estimatedValueTotalBrl: toNumber(totals?.estimatedValueTotalBrl),
       wonValueTotalBrl: toNumber(totals?.wonValueTotalBrl),
       byStatus: byStatusRows as DashboardStatusMetric[],
-      byCompany: byCompanyRows.map((row) => ({
-        ...row,
-        totalEstimatedValueBrl: toNumber(row.totalEstimatedValueBrl),
-      })) as DashboardCompanyMetric[],
+      byCompany: byCompanyRows.map((row) => {
+        const companyWon = row.wonProposals ?? 0;
+        const companyLost = row.lostProposals ?? 0;
+        const conversionBase = companyWon + companyLost;
+
+        return {
+          ...row,
+          wonProposals: companyWon,
+          lostProposals: companyLost,
+          conversionRate: conversionBase > 0 ? companyWon / conversionBase : 0,
+          totalEstimatedValueBrl: toNumber(row.totalEstimatedValueBrl),
+          wonValueTotalBrl: toNumber(row.wonValueTotalBrl),
+        };
+      }) as DashboardCompanyMetric[],
     };
   }
 }

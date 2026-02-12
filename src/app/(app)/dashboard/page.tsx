@@ -56,13 +56,14 @@ export default async function DashboardPage() {
       {
         title: "Valor estimado",
         value: formatCurrencyBrl(summary.estimatedValueTotalBrl),
-        description: "Soma do valor estimado de todas as propostas",
+        titleTip: "Desconsidera propostas com status perdida e cancelada.",
+        description: "Soma do valor estimado das propostas ativas e ganhas",
         footerText: "Base de previsão comercial",
       },
       {
         title: "Valor ganho",
         value: formatCurrencyBrl(summary.wonValueTotalBrl),
-        description: "Soma do valor final das propostas ganhas",
+        description: "Soma das propostas ganhas (valor final ou estimado)",
         footerText: "Receita confirmada",
       },
     ]
@@ -84,6 +85,7 @@ export default async function DashboardPage() {
       {
         title: "Valor estimado",
         value: "—",
+        titleTip: "Desconsidera propostas com status perdida e cancelada.",
         description: "Sem dados disponíveis",
         footerText: "Tente novamente em instantes",
       },
@@ -101,7 +103,7 @@ export default async function DashboardPage() {
     <div className="flex flex-1 flex-col gap-6">
       <SectionCards cards={sectionCardsData} />
 
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[0.66fr_1fr]">
         <Card>
           <CardHeader>
             <CardTitle>Funil por status</CardTitle>
@@ -134,23 +136,46 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Ranking por cliente</CardTitle>
-            <CardDescription>Quantidade e valor total de propostas.</CardDescription>
+            <CardDescription>
+              Quantidade, somas e conversão com a mesma regra do consolidado geral.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {rankedCompanies.length > 0 ? (
-              rankedCompanies.map((company) => (
-                <div key={company.companyId} className="rounded-md border border-border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-foreground">{company.companyName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {company.proposalCount} propostas
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Valor estimado: {formatCurrencyBrl(company.totalEstimatedValueBrl)}
-                  </p>
-                </div>
-              ))
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[680px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="px-2 py-2 font-medium">Cliente</th>
+                      <th className="px-2 py-2 font-medium">Propostas</th>
+                      <th className="px-2 py-2 font-medium">Valor estimado</th>
+                      <th className="px-2 py-2 font-medium">Valor ganho</th>
+                      <th className="px-2 py-2 font-medium">Conversão</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankedCompanies.map((company) => (
+                      <tr key={company.companyId} className="border-b border-border/70">
+                        <td className="px-2 py-2 font-medium text-foreground">
+                          {company.companyName}
+                        </td>
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {company.proposalCount}
+                        </td>
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {formatCurrencyBrl(company.totalEstimatedValueBrl)}
+                        </td>
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {formatCurrencyBrl(company.wonValueTotalBrl)}
+                        </td>
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {percentFormatter.format(company.conversionRate)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
                 Nenhum cliente com propostas registradas ainda.
