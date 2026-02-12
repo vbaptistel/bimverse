@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +63,6 @@ export function CreateProposalForm({
 }: CreateProposalFormProps) {
   const [isPending, startTransition] = useTransition();
   const [isLoadingCustomers, startLoadingCustomers] = useTransition();
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerPresenter[]>([]);
 
   const defaultYear = useMemo(() => new Date().getFullYear(), []);
@@ -87,7 +87,7 @@ export function CreateProposalForm({
       }
 
       if (!result.success) {
-        setFeedback(`Erro: ${result.error}`);
+        toast.error(`Erro: ${result.error}`);
         return;
       }
 
@@ -100,14 +100,11 @@ export function CreateProposalForm({
   }, [open, startLoadingCustomers]);
 
   const closeAndReset = () => {
-    setFeedback(null);
     form.reset(buildDefaultValues(defaultYear));
     onOpenChange(false);
   };
 
   const onSubmit = form.handleSubmit((values) => {
-    setFeedback(null);
-
     startTransition(async () => {
       const result = await createProposalAction({
         ...values,
@@ -117,7 +114,7 @@ export function CreateProposalForm({
       });
 
       if (!result.success) {
-        setFeedback(`Erro: ${result.error}`);
+        toast.error(`Erro: ${result.error}`);
         return;
       }
 
@@ -248,12 +245,6 @@ export function CreateProposalForm({
             <Label htmlFor="scopeDescription">Descrição do escopo</Label>
             <Textarea id="scopeDescription" {...form.register("scopeDescription")} />
           </div>
-
-          {feedback ? (
-            <p className="rounded-md bg-[#f5f8fb] px-3 py-2 text-sm text-[#12304a]">
-              {feedback}
-            </p>
-          ) : null}
 
           <DialogFooter>
             <Button

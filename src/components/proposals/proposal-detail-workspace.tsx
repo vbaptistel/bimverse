@@ -59,8 +59,10 @@ import {
   cancelProposalRevisionAction,
   closeProposalRevisionAction,
   linkProposalSupplierAction,
+  prepareProposalSendUploadAction,
   prepareRevisionDocumentUploadAction,
   type ProposalDetailPresenter,
+  sendProposalWithFileAction,
   startProposalRevisionCycleAction,
   unlinkProposalSupplierAction,
   updateProposalBaseAction,
@@ -70,8 +72,8 @@ import {
   updateProposalSupplierLinkAction,
 } from "@/modules/proposals/interface";
 import { formatCurrencyBrl, parseCurrencyBrlInput } from "@/shared/domain/currency";
-import type { AttachmentCategory, ProposalStatus } from "@/shared/domain/types";
-import { ATTACHMENT_CATEGORIES } from "@/shared/domain/types";
+import type { ManualAttachmentCategory, ProposalStatus } from "@/shared/domain/types";
+import { MANUAL_ATTACHMENT_CATEGORIES } from "@/shared/domain/types";
 import { createSupabaseBrowserClient } from "@/shared/infrastructure/supabase/browser-client";
 
 const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
@@ -133,7 +135,7 @@ type CloseRevisionFormValues = z.infer<typeof closeRevisionFormSchema>;
 
 interface AttachmentUploadFormValues {
   revisionId: string | null;
-  category: AttachmentCategory;
+  category: ManualAttachmentCategory;
 }
 
 interface SupplierLinkFormValues {
@@ -312,6 +314,30 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     () => new Map(detail.revisions.map((revision) => [revision.id, revision])),
     [detail.revisions],
   );
+  const proposalFileByRevisionId = useMemo(() => {
+    const byRevisionId = new Map<string, (typeof detail.proposalFiles)[number]>();
+
+    for (const proposalFile of detail.proposalFiles) {
+      if (!proposalFile.revisionId) {
+        continue;
+      }
+
+      const current = byRevisionId.get(proposalFile.revisionId);
+      if (!current) {
+        byRevisionId.set(proposalFile.revisionId, proposalFile);
+        continue;
+      }
+
+      if (
+        new Date(proposalFile.createdAt).getTime() >
+        new Date(current.createdAt).getTime()
+      ) {
+        byRevisionId.set(proposalFile.revisionId, proposalFile);
+      }
+    }
+
+    return byRevisionId;
+  }, [detail.proposalFiles]);
 
   const currentEstimatedValueBrl = baseForm.watch("estimatedValueBrl");
   const latestRevisionValueBrl = useMemo(() => {
@@ -375,6 +401,8 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     selectedStatusInModal === "perdida" || selectedStatusInModal === "cancelada";
   const statusRequiresDateInModal =
     selectedStatusInModal === "enviada" || selectedStatusInModal === "ganha";
+  const isSendingToEnviadaInModal =
+    selectedStatusInModal === "enviada" && detail.proposal.status !== "enviada";
   const statusDateLabelInModal =
     selectedStatusInModal === "enviada" ? "Data de envio" : "Data de ganho";
   const baseRevision = useMemo(
@@ -601,6 +629,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       status: detail.proposal.status,
       statusDate: null,
     });
+
+    const statusFileInput = document.getElementById(
+      "statusProposalFile",
+    ) as HTMLInputElement | null;
+    if (statusFileInput) {
+      statusFileInput.value = "";
+    }
   };
 
   const handleStartRevision = () => {
@@ -628,6 +663,12 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     }
 
     const nextStatus = values.status as ManualProposalStatus;
+    if (nextStatus === detail.proposal.status) {
+      closeStatusModal();
+      toast.info("Nenhuma mudança de status para salvar.");
+      return;
+    }
+
     const requiresReason = nextStatus === "perdida" || nextStatus === "cancelada";
     const requiresStatusDate = nextStatus === "enviada" || nextStatus === "ganha";
     const reason = toNullableText(statusReason);
@@ -638,6 +679,65 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     }
 
     startTransition(async () => {
+      if (nextStatus === "enviada") {
+        const fileInput = document.getElementById(
+          "statusProposalFile",
+        ) as HTMLInputElement | null;
+        const file = fileInput?.files?.[0];
+
+        if (!file) {
+          toast.error("Selecione o arquivo principal da proposta.");
+          return;
+        }
+
+        const prepared = await prepareProposalSendUploadAction({
+          proposalId: values.proposalId,
+          fileName: file.name,
+          fileSizeBytes: file.size,
+          mimeType: file.type,
+        });
+
+        if (!prepared.success) {
+          toast.error(`Erro ao preparar upload: ${prepared.error}`);
+          return;
+        }
+
+        const supabase = createSupabaseBrowserClient();
+        const uploadResult = await supabase.storage
+          .from("proposal-attachments")
+          .uploadToSignedUrl(
+            prepared.data.path,
+            prepared.data.token,
+            file,
+          );
+
+        if (uploadResult.error) {
+          toast.error(`Erro no upload: ${uploadResult.error.message}`);
+          return;
+        }
+
+        const sendResult = await sendProposalWithFileAction({
+          proposalId: values.proposalId,
+          fileName: file.name,
+          storagePath: prepared.data.path,
+          mimeType: file.type,
+          fileSizeBytes: file.size,
+          statusDate,
+        });
+
+        if (!sendResult.success) {
+          toast.error(`Erro: ${sendResult.error}`);
+          return;
+        }
+
+        closeStatusModal();
+        toast.success(
+          `Status atualizado para ${PROPOSAL_STATUS_LABELS[sendResult.data.proposal.status]}.`,
+        );
+        router.refresh();
+        return;
+      }
+
       const result = await updateProposalStatusAction({
         proposalId: values.proposalId,
         status: nextStatus,
@@ -1290,7 +1390,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
                   <th className="px-2 py-2">Revisão</th>
@@ -1299,40 +1399,80 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   <th className="px-2 py-2">Depois</th>
                   <th className="px-2 py-2">% desconto</th>
                   <th className="px-2 py-2">Data</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {detail.revisions.length === 0 ? (
                   <tr className="border-b border-border">
-                    <td className="px-2 py-4 text-muted-foreground" colSpan={6}>
+                    <td className="px-2 py-4 text-muted-foreground" colSpan={7}>
                       Nenhuma revisão registrada.
                     </td>
                   </tr>
                 ) : (
-                  detail.revisions.map((revision) => (
-                    <tr key={revision.id} className="border-b border-border">
-                      <td className="px-2 py-3 font-mono">R{revision.revisionNumber}</td>
-                      <td className="px-2 py-3">{revision.reason ?? "—"}</td>
-                      <td className="px-2 py-3 text-muted-foreground">
-                        {revision.valueBeforeBrl !== null
-                          ? formatCurrencyBrl(revision.valueBeforeBrl)
-                          : "—"}
-                      </td>
-                      <td className="px-2 py-3 text-muted-foreground">
-                        {revision.valueAfterBrl !== null
-                          ? formatCurrencyBrl(revision.valueAfterBrl)
-                          : "—"}
-                      </td>
-                      <td className="px-2 py-3 text-muted-foreground">
-                        {revision.discountPercent !== null
-                          ? `${revision.discountPercent.toFixed(2)}%`
-                          : "—"}
-                      </td>
-                      <td className="px-2 py-3 text-xs text-muted-foreground">
-                        {dateTimeFormatter.format(new Date(revision.createdAt))}
-                      </td>
-                    </tr>
-                  ))
+                  detail.revisions.map((revision) => {
+                    const proposalFile = proposalFileByRevisionId.get(revision.id);
+
+                    return (
+                      <tr key={revision.id} className="border-b border-border">
+                        <td className="px-2 py-3 font-mono">R{revision.revisionNumber}</td>
+                        <td className="px-2 py-3">{revision.reason ?? "—"}</td>
+                        <td className="px-2 py-3 text-muted-foreground">
+                          {revision.valueBeforeBrl !== null
+                            ? formatCurrencyBrl(revision.valueBeforeBrl)
+                            : "—"}
+                        </td>
+                        <td className="px-2 py-3 text-muted-foreground">
+                          {revision.valueAfterBrl !== null
+                            ? formatCurrencyBrl(revision.valueAfterBrl)
+                            : "—"}
+                        </td>
+                        <td className="px-2 py-3 text-muted-foreground">
+                          {revision.discountPercent !== null
+                            ? `${revision.discountPercent.toFixed(2)}%`
+                            : "—"}
+                        </td>
+                        <td className="px-2 py-3 text-xs text-muted-foreground">
+                          {dateTimeFormatter.format(new Date(revision.createdAt))}
+                        </td>
+                        <td className="px-2 py-3 text-right w-20">
+                          {proposalFile ? (
+                            <div className="flex justify-end gap-2">
+                              <Button asChild type="button" size="sm" variant="outline">
+                                <a
+                                  href={getAttachmentOpenPath(
+                                    detail.proposal.id,
+                                    proposalFile.id,
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Eye />
+                                  Visualizar
+                                </a>
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleDownloadAttachment(proposalFile.id)}
+                                disabled={isPending}
+                              >
+                                {isPending ? (
+                                  <Loader2 className="animate-spin" />
+                                ) : (
+                                  <FileDown />
+                                )}
+                                Download
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1345,7 +1485,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <CardTitle>Anexos</CardTitle>
-              <CardDescription>Lista de anexos da proposta.</CardDescription>
+              <CardDescription>Anexos complementares da proposta.</CardDescription>
             </div>
             <Button
               type="button"
@@ -1655,6 +1795,12 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             statusDate: null,
           });
           setStatusReason("");
+          const statusFileInput = document.getElementById(
+            "statusProposalFile",
+          ) as HTMLInputElement | null;
+          if (statusFileInput) {
+            statusFileInput.value = "";
+          }
           setStatusModalOpen(true);
         }}
       >
@@ -1711,6 +1857,19 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   </div>
                 )}
               />
+            ) : null}
+
+            {isSendingToEnviadaInModal ? (
+              <div className="grid gap-2">
+                <Label htmlFor="statusProposalFile">Arquivo principal da proposta</Label>
+                <Input
+                  id="statusProposalFile"
+                  type="file"
+                  className="cursor-pointer bg-white disabled:bg-white"
+                  disabled={isPending}
+                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                />
+              </div>
             ) : null}
 
             {statusRequiresReasonInModal ? (
@@ -1800,7 +1959,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ATTACHMENT_CATEGORIES.map((category) => (
+                      {MANUAL_ATTACHMENT_CATEGORIES.map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}
                         </SelectItem>

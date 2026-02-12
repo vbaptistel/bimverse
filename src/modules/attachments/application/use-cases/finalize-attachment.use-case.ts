@@ -29,6 +29,12 @@ export class FinalizeAttachmentUseCase
   ) {}
 
   async execute(input: FinalizeAttachmentInput): Promise<FinalizeAttachmentOutput> {
+    if (input.category === "proposta_word") {
+      throw new ValidationError(
+        "Use o fluxo de envio da proposta para arquivo principal",
+      );
+    }
+
     const proposal = await this.proposalRepository.getProposalById(input.proposalId);
     if (!proposal) {
       throw new NotFoundError("Proposta não encontrada");

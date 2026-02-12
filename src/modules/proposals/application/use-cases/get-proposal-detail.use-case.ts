@@ -38,6 +38,7 @@ export interface GetProposalDetailOutput {
   proposal: ProposalDetailRecord;
   currentValueBrl: number | null;
   revisions: ProposalRevision[];
+  proposalFiles: Attachment[];
   attachments: Attachment[];
   supplierLinks: ProposalSupplierLink[];
   supplierOptions: Supplier[];
@@ -64,6 +65,7 @@ function parseStatusDate(metadata: Record<string, unknown>): Date | null {
 function buildHistory(
   revisions: ProposalRevision[],
   attachments: Attachment[],
+  proposalFiles: Attachment[],
   activity: ActivityLogEntry[],
 ): ProposalHistoryEntry[] {
   const entries: ProposalHistoryEntry[] = [];
@@ -85,6 +87,16 @@ function buildHistory(
       title: `Anexo enviado (${attachment.category})`,
       description: attachment.fileName,
       createdAt: attachment.createdAt,
+    });
+  }
+
+  for (const proposalFile of proposalFiles) {
+    entries.push({
+      id: `proposal-file-${proposalFile.id}`,
+      type: "attachment",
+      title: "Arquivo da proposta atualizado",
+      description: proposalFile.fileName,
+      createdAt: proposalFile.createdAt,
     });
   }
 
@@ -142,7 +154,7 @@ function buildTimeline(
   proposalUpdatedAt: Date,
   proposalStatus: string,
   revisions: ProposalRevision[],
-  attachments: Attachment[],
+  proposalFiles: Attachment[],
   activity: ActivityLogEntry[],
 ): ProposalTimelineEntry[] {
   const entries: ProposalTimelineEntry[] = [
@@ -205,13 +217,11 @@ function buildTimeline(
     });
   }
 
-  for (const attachment of attachments.filter(
-    (attachment) => attachment.category === "proposta_word",
-  )) {
+  for (const proposalFile of proposalFiles) {
     entries.push({
-      id: `attachment-proposal-word-${attachment.id}`,
+      id: `attachment-proposal-word-${proposalFile.id}`,
       title: "Arquivo da proposta atualizado",
-      date: attachment.createdAt,
+      date: proposalFile.createdAt,
     });
   }
 
@@ -244,7 +254,7 @@ export class GetProposalDetailUseCase
 
     const [
       revisions,
-      attachments,
+      allAttachments,
       supplierLinks,
       supplierOptions,
       activity,
@@ -256,6 +266,13 @@ export class GetProposalDetailUseCase
       this.activityLogRepository.findManyByEntity("proposal", proposal.id),
     ]);
 
+    const proposalFiles = allAttachments.filter(
+      (attachment) => attachment.category === "proposta_word",
+    );
+    const attachments = allAttachments.filter(
+      (attachment) => attachment.category !== "proposta_word",
+    );
+
     const latestRevision = revisions[0] ?? null;
     const currentValueBrl =
       latestRevision?.valueAfterBrl ??
@@ -263,14 +280,14 @@ export class GetProposalDetailUseCase
       proposal.estimatedValueBrl;
 
     const pendingRevisionCycle = findPendingRevisionCycle(activity);
-    const history = buildHistory(revisions, attachments, activity);
+    const history = buildHistory(revisions, attachments, proposalFiles, activity);
     const timeline = buildTimeline(
       proposal.createdAt,
       proposal.dueDate,
       proposal.updatedAt,
       proposal.status,
       revisions,
-      attachments,
+      proposalFiles,
       activity,
     );
 
@@ -278,6 +295,7 @@ export class GetProposalDetailUseCase
       proposal,
       currentValueBrl,
       revisions,
+      proposalFiles,
       attachments,
       supplierLinks,
       supplierOptions,

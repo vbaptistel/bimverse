@@ -17,6 +17,11 @@ export type AttachmentCategory =
   | "planilha_custos"
   | "outro";
 
+export type ManualAttachmentCategory = Exclude<
+  AttachmentCategory,
+  "proposta_word"
+>;
+
 export const CUSTOMER_STATUSES = [
   "potencial",
   "em_negociacao",
@@ -42,6 +47,14 @@ export const ATTACHMENT_CATEGORIES: AttachmentCategory[] = [
   "tr",
   "referencia",
   "proposta_word",
+  "planilha_custos",
+  "outro",
+];
+
+export const MANUAL_ATTACHMENT_CATEGORIES: ManualAttachmentCategory[] = [
+  "convite",
+  "tr",
+  "referencia",
   "planilha_custos",
   "outro",
 ];

@@ -41,6 +41,12 @@ export class UpdateProposalStatusUseCase
       );
     }
 
+    if (input.status === "enviada") {
+      throw new ValidationError(
+        "Para enviar proposta, use o fluxo de envio com arquivo principal",
+      );
+    }
+
     const current = await this.proposalRepository.getProposalById(input.proposalId);
     if (!current) {
       throw new NotFoundError("Proposta não encontrada");
@@ -48,11 +54,11 @@ export class UpdateProposalStatusUseCase
 
     const normalizedOutcomeReason = input.outcomeReason?.trim() || null;
     const normalizedStatusDate = input.statusDate?.trim() || null;
-    const statusSupportsDate = input.status === "enviada" || input.status === "ganha";
+    const statusSupportsDate = input.status === "ganha";
 
     if (!statusSupportsDate && normalizedStatusDate) {
       throw new ValidationError(
-        "Data de evento só pode ser informada para status enviada ou ganha",
+        "Data de evento só pode ser informada para status ganha",
       );
     }
 

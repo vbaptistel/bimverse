@@ -45,6 +45,12 @@ export class CreateAttachmentUploadUseCase
   async execute(
     input: CreateAttachmentUploadInput,
   ): Promise<CreateAttachmentUploadOutput> {
+    if (input.category === "proposta_word") {
+      throw new ValidationError(
+        "Use o fluxo de envio da proposta para arquivo principal",
+      );
+    }
+
     if (!ALLOWED_MIME_TYPES.has(input.mimeType)) {
       throw new ValidationError("Tipo de arquivo não suportado");
     }

@@ -3,8 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +96,6 @@ export function CustomersCrud({
   const searchParams = useSearchParams();
 
   const [customers, setCustomers] = useState<CustomerPresenter[]>(initialCustomers);
-  const [feedback, setFeedback] = useState<string | null>(initialError);
   const [editingCustomer, setEditingCustomer] = useState<CustomerPresenter | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(openCreateOnLoad);
   const [search, setSearch] = useState("");
@@ -115,6 +115,14 @@ export function CustomersCrud({
     resolver: zodResolver(createCustomerSchema),
     defaultValues: defaultCustomerFormValues,
   });
+
+  useEffect(() => {
+    if (!initialError) {
+      return;
+    }
+
+    toast.error(initialError);
+  }, [initialError]);
 
   const clearCreateFlagFromUrl = () => {
     if (!searchParams.has("new")) {
@@ -139,7 +147,7 @@ export function CustomersCrud({
     });
 
     if (!result.success) {
-      setFeedback(`Erro: ${result.error}`);
+      toast.error(`Erro: ${result.error}`);
       return;
     }
 
@@ -152,7 +160,6 @@ export function CustomersCrud({
   };
 
   const openCreateModal = () => {
-    setFeedback(null);
     resetFormToCreate();
     setIsFormModalOpen(true);
   };
@@ -164,8 +171,6 @@ export function CustomersCrud({
   };
 
   const onSubmit = form.handleSubmit((values) => {
-    setFeedback(null);
-
     startTransition(async () => {
       const normalizedInput = {
         name: values.name,
@@ -183,11 +188,11 @@ export function CustomersCrud({
         : await createCustomerAction(normalizedInput);
 
       if (!result.success) {
-        setFeedback(`Erro: ${result.error}`);
+        toast.error(`Erro: ${result.error}`);
         return;
       }
 
-      setFeedback(
+      toast.success(
         editingCustomer
           ? `Cliente atualizado: ${result.data.name}`
           : `Cliente criado: ${result.data.name}`,
@@ -200,7 +205,6 @@ export function CustomersCrud({
   });
 
   const applyFilters = () => {
-    setFeedback(null);
     startTransition(async () => {
       await refreshCustomers(search, statusFilter);
     });
@@ -208,7 +212,6 @@ export function CustomersCrud({
 
   const handleStatusTabChange = (value: string) => {
     setStatusFilter(value as StatusFilter);
-    setFeedback(null);
     startTransition(async () => {
       await refreshCustomers(search, value as StatusFilter);
     });
@@ -216,7 +219,6 @@ export function CustomersCrud({
 
   const handleEdit = (customer: CustomerPresenter) => {
     setEditingCustomer(customer);
-    setFeedback(null);
     form.reset({
       name: customer.name,
       slug: customer.slug,
@@ -236,15 +238,13 @@ export function CustomersCrud({
       return;
     }
 
-    setFeedback(null);
-
     startTransition(async () => {
       const result = await deleteCustomerAction({
         customerId: customer.id,
       });
 
       if (!result.success) {
-        setFeedback(`Erro: ${result.error}`);
+        toast.error(`Erro: ${result.error}`);
         return;
       }
 
@@ -253,7 +253,7 @@ export function CustomersCrud({
         resetFormToCreate();
       }
 
-      setFeedback(`Cliente excluído: ${customer.name}`);
+      toast.success(`Cliente excluído: ${customer.name}`);
       await refreshCustomers(search, statusFilter);
     });
   };
@@ -492,12 +492,6 @@ export function CustomersCrud({
           </table>
         </CardContent>
       </Card>
-
-      {feedback ? (
-        <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-foreground">
-          {feedback}
-        </p>
-      ) : null}
     </div>
   );
 }

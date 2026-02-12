@@ -140,7 +140,8 @@ describe("UpdateProposalStatusUseCase", () => {
     await expect(
       useCase.execute({
         proposalId: "proposal-1",
-        status: "enviada",
+        status: "perdida",
+        outcomeReason: "Sem fechamento",
         changedBy: "user-1",
       }),
     ).rejects.toThrow("Transição inválida");
@@ -211,8 +212,24 @@ describe("UpdateProposalStatusUseCase", () => {
         statusDate: "2026-02-10",
         changedBy: "user-1",
       }),
+    ).rejects.toThrow("Data de evento só pode ser informada para status ganha");
+  });
+
+  it("rejeita alteração manual para enviada sem fluxo dedicado", async () => {
+    const useCase = new UpdateProposalStatusUseCase(
+      new FakeProposalRepository("em_elaboracao"),
+      new FakeActivityLogRepository(),
+    );
+
+    await expect(
+      useCase.execute({
+        proposalId: "proposal-1",
+        status: "enviada",
+        statusDate: "2026-02-10",
+        changedBy: "user-1",
+      }),
     ).rejects.toThrow(
-      "Data de evento só pode ser informada para status enviada ou ganha",
+      "Para enviar proposta, use o fluxo de envio com arquivo principal",
     );
   });
 });

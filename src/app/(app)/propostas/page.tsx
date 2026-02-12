@@ -4,6 +4,7 @@ import type { Column, ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Plus } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { CreateProposalForm } from "@/components/proposals/create-proposal-form";
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
@@ -100,7 +101,6 @@ export default function ProposalsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [proposals, setProposals] = useState<ProposalPresenter[]>([]);
-  const [feedback, setFeedback] = useState<string | null>(null);
   const isCreateModalVisible = isCreateModalOpen || searchParams.has("new");
 
   const dateFormatter = useMemo(
@@ -262,7 +262,7 @@ export default function ProposalsPage() {
     });
 
     if (!result.success) {
-      setFeedback(`Erro: ${result.error}`);
+      toast.error(`Erro: ${result.error}`);
       return;
     }
 
@@ -297,7 +297,6 @@ export default function ProposalsPage() {
   };
 
   const applyFilters = () => {
-    setFeedback(null);
     startTransition(async () => {
       await refreshProposals(search, statusFilter);
     });
@@ -305,7 +304,6 @@ export default function ProposalsPage() {
 
   const handleStatusTabChange = (value: string) => {
     setStatusFilter(value as StatusFilter);
-    setFeedback(null);
     startTransition(async () => {
       await refreshProposals(search, value as StatusFilter);
     });
@@ -330,7 +328,6 @@ export default function ProposalsPage() {
         primaryAction={{
           label: "Nova proposta",
           onClick: () => {
-            setFeedback(null);
             setIsCreateModalOpen(true);
           },
           icon: <Plus className="size-3.5" />,
@@ -341,7 +338,7 @@ export default function ProposalsPage() {
         open={isCreateModalVisible}
         onOpenChange={handleCreateModalChange}
         onCreated={(message) => {
-          setFeedback(message);
+          toast.success(message);
           startTransition(async () => {
             await refreshProposals(search, statusFilter);
           });
@@ -360,12 +357,6 @@ export default function ProposalsPage() {
           />
         </CardContent>
       </Card>
-
-      {feedback ? (
-        <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-foreground">
-          {feedback}
-        </p>
-      ) : null}
     </div>
   );
 }

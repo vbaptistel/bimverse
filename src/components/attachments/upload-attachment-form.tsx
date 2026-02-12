@@ -1,8 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,12 +30,11 @@ import {
   createAttachmentUploadSchema,
   type CreateAttachmentUploadSchema,
 } from "@/modules/attachments/interface/schemas/attachment.schema";
-import { ATTACHMENT_CATEGORIES } from "@/shared/domain/types";
+import { MANUAL_ATTACHMENT_CATEGORIES } from "@/shared/domain/types";
 import { createSupabaseBrowserClient } from "@/shared/infrastructure/supabase/browser-client";
 
 export function UploadAttachmentForm() {
   const [isPending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState<string | null>(null);
 
   const form = useForm<CreateAttachmentUploadSchema>({
     resolver: zodResolver(createAttachmentUploadSchema),
@@ -49,8 +49,6 @@ export function UploadAttachmentForm() {
   });
 
   const onSubmit = form.handleSubmit((values) => {
-    setFeedback(null);
-
     startTransition(async () => {
       const fileInput = document.getElementById(
         "attachmentFile",
@@ -58,7 +56,7 @@ export function UploadAttachmentForm() {
       const file = fileInput?.files?.[0];
 
       if (!file) {
-        setFeedback("Selecione um arquivo antes de enviar.");
+        toast.error("Selecione um arquivo antes de enviar.");
         return;
       }
 
@@ -72,7 +70,7 @@ export function UploadAttachmentForm() {
       });
 
       if (!uploadRequest.success) {
-        setFeedback(`Erro de assinatura: ${uploadRequest.error}`);
+        toast.error(`Erro de assinatura: ${uploadRequest.error}`);
         return;
       }
 
@@ -86,7 +84,7 @@ export function UploadAttachmentForm() {
         );
 
       if (uploadResult.error) {
-        setFeedback(`Erro no upload direto: ${uploadResult.error.message}`);
+        toast.error(`Erro no upload direto: ${uploadResult.error.message}`);
         return;
       }
 
@@ -101,11 +99,11 @@ export function UploadAttachmentForm() {
       });
 
       if (!finalized.success) {
-        setFeedback(`Erro ao finalizar metadados: ${finalized.error}`);
+        toast.error(`Erro ao finalizar metadados: ${finalized.error}`);
         return;
       }
 
-      setFeedback(`Anexo salvo com sucesso: ${finalized.data.fileName}`);
+      toast.success(`Anexo salvo com sucesso: ${finalized.data.fileName}`);
       fileInput!.value = "";
     });
   });
@@ -155,7 +153,7 @@ export function UploadAttachmentForm() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ATTACHMENT_CATEGORIES.map((category) => (
+                      {MANUAL_ATTACHMENT_CATEGORIES.map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}
                         </SelectItem>
@@ -171,12 +169,6 @@ export function UploadAttachmentForm() {
             <Label htmlFor="attachmentFile">Arquivo (max 50MB)</Label>
             <Input id="attachmentFile" type="file" />
           </div>
-
-          {feedback ? (
-            <p className="rounded-md bg-[#f5f8fb] px-3 py-2 text-sm text-[#12304a]">
-              {feedback}
-            </p>
-          ) : null}
 
           <div className="flex justify-end">
             <Button type="submit" disabled={isPending}>

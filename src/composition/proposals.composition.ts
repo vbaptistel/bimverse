@@ -8,7 +8,9 @@ import { CreateRevisionUseCase } from "@/modules/proposals/application/use-cases
 import { GetProposalDetailUseCase } from "@/modules/proposals/application/use-cases/get-proposal-detail.use-case";
 import { ListProposalsUseCase } from "@/modules/proposals/application/use-cases/list-proposals.use-case";
 import { LinkProposalSupplierUseCase } from "@/modules/proposals/application/use-cases/link-proposal-supplier.use-case";
+import { PrepareProposalSendUploadUseCase } from "@/modules/proposals/application/use-cases/prepare-proposal-send-upload.use-case";
 import { PrepareRevisionDocumentUploadUseCase } from "@/modules/proposals/application/use-cases/prepare-revision-document-upload.use-case";
+import { SendProposalWithFileUseCase } from "@/modules/proposals/application/use-cases/send-proposal-with-file.use-case";
 import { StartProposalRevisionCycleUseCase } from "@/modules/proposals/application/use-cases/start-proposal-revision-cycle.use-case";
 import { UnlinkProposalSupplierUseCase } from "@/modules/proposals/application/use-cases/unlink-proposal-supplier.use-case";
 import { UpdateProposalBaseUseCase } from "@/modules/proposals/application/use-cases/update-proposal-base.use-case";
@@ -62,7 +64,19 @@ export function buildProposalsComposition() {
       revisionRepository,
       storagePort,
     ),
+    prepareProposalSendUploadUseCase: new PrepareProposalSendUploadUseCase(
+      proposalRepository,
+      revisionRepository,
+      storagePort,
+    ),
     closeProposalRevisionUseCase: new CloseProposalRevisionUseCase(
+      proposalRepository,
+      revisionRepository,
+      attachmentRepository,
+      storagePort,
+      activityLogRepository,
+    ),
+    sendProposalWithFileUseCase: new SendProposalWithFileUseCase(
       proposalRepository,
       revisionRepository,
       attachmentRepository,

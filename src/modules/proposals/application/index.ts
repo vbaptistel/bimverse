@@ -9,7 +9,9 @@ export * from "@/modules/proposals/application/use-cases/create-revision.use-cas
 export * from "@/modules/proposals/application/use-cases/get-proposal-detail.use-case";
 export * from "@/modules/proposals/application/use-cases/list-proposals.use-case";
 export * from "@/modules/proposals/application/use-cases/link-proposal-supplier.use-case";
+export * from "@/modules/proposals/application/use-cases/prepare-proposal-send-upload.use-case";
 export * from "@/modules/proposals/application/use-cases/prepare-revision-document-upload.use-case";
+export * from "@/modules/proposals/application/use-cases/send-proposal-with-file.use-case";
 export * from "@/modules/proposals/application/use-cases/start-proposal-revision-cycle.use-case";
 export * from "@/modules/proposals/application/use-cases/unlink-proposal-supplier.use-case";
 export * from "@/modules/proposals/application/use-cases/update-proposal-base.use-case";

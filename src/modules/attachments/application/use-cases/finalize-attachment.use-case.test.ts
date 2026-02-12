@@ -151,4 +151,25 @@ describe("FinalizeAttachmentUseCase", () => {
       }),
     ).rejects.toThrow("Arquivo não encontrado no storage");
   });
+
+  it("rejeita categoria de arquivo principal no fluxo de anexos", async () => {
+    const useCase = new FinalizeAttachmentUseCase(
+      new FakeProposalRepository(),
+      new FakeAttachmentRepository(),
+      new FakeStoragePort(true),
+    );
+
+    await expect(
+      useCase.execute({
+        proposalId: "proposal-1",
+        category: "proposta_word",
+        fileName: "BV-EGIS-2026-BIM-001-R1.docx",
+        storagePath: "path/doc.docx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        fileSizeBytes: 1000,
+        uploadedBy: "user-1",
+      }),
+    ).rejects.toThrow("Use o fluxo de envio da proposta para arquivo principal");
+  });
 });

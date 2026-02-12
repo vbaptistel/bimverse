@@ -1,16 +1,10 @@
 import { z } from "zod";
+import { MANUAL_ATTACHMENT_CATEGORIES } from "@/shared/domain/types";
 
 export const createAttachmentUploadSchema = z.object({
   proposalId: z.string().uuid(),
   revisionId: z.string().uuid().optional().nullable(),
-  category: z.enum([
-    "convite",
-    "tr",
-    "referencia",
-    "proposta_word",
-    "planilha_custos",
-    "outro",
-  ]),
+  category: z.enum(MANUAL_ATTACHMENT_CATEGORIES),
   fileName: z.string().trim().min(1).max(255),
   fileSizeBytes: z.number().positive(),
   mimeType: z.string().trim().min(3).max(150),
@@ -19,14 +13,7 @@ export const createAttachmentUploadSchema = z.object({
 export const finalizeAttachmentSchema = z.object({
   proposalId: z.string().uuid(),
   revisionId: z.string().uuid().optional().nullable(),
-  category: z.enum([
-    "convite",
-    "tr",
-    "referencia",
-    "proposta_word",
-    "planilha_custos",
-    "outro",
-  ]),
+  category: z.enum(MANUAL_ATTACHMENT_CATEGORIES),
   fileName: z.string().trim().min(1).max(255),
   storagePath: z.string().trim().min(3).max(2000),
   mimeType: z.string().trim().min(3).max(150),

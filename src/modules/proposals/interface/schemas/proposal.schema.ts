@@ -49,6 +49,22 @@ export const prepareRevisionDocumentUploadSchema = z.object({
   mimeType: z.string().trim().min(3).max(150),
 });
 
+export const prepareProposalSendUploadSchema = z.object({
+  proposalId: z.string().uuid(),
+  fileName: z.string().trim().min(1).max(255),
+  fileSizeBytes: z.number().positive(),
+  mimeType: z.string().trim().min(3).max(150),
+});
+
+export const sendProposalWithFileSchema = z.object({
+  proposalId: z.string().uuid(),
+  fileName: z.string().trim().min(1).max(255),
+  storagePath: z.string().trim().min(3).max(2000),
+  mimeType: z.string().trim().min(3).max(150),
+  fileSizeBytes: z.number().positive(),
+  statusDate: z.string().date().optional().nullable(),
+});
+
 export const closeProposalRevisionSchema = z.object({
   proposalId: z.string().uuid(),
   reason: z.string().trim().min(3).max(300),
@@ -104,6 +120,10 @@ export type UpdateProposalBaseSchema = z.infer<typeof updateProposalBaseSchema>;
 export type PrepareRevisionDocumentUploadSchema = z.infer<
   typeof prepareRevisionDocumentUploadSchema
 >;
+export type PrepareProposalSendUploadSchema = z.infer<
+  typeof prepareProposalSendUploadSchema
+>;
+export type SendProposalWithFileSchema = z.infer<typeof sendProposalWithFileSchema>;
 export type CloseProposalRevisionSchema = z.infer<
   typeof closeProposalRevisionSchema
 >;

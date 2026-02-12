@@ -104,4 +104,22 @@ describe("CreateAttachmentUploadUseCase", () => {
       }),
     ).rejects.toThrow("Arquivo deve ter no máximo 50MB");
   });
+
+  it("rejeita categoria de arquivo principal no fluxo de anexos", async () => {
+    const useCase = new CreateAttachmentUploadUseCase(
+      new FakeProposalRepository(),
+      new FakeStoragePort(),
+    );
+
+    await expect(
+      useCase.execute({
+        proposalId: "proposal-1",
+        category: "proposta_word",
+        fileName: "BV-EGIS-2026-BIM-001-R1.docx",
+        fileSizeBytes: 1024,
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      }),
+    ).rejects.toThrow("Use o fluxo de envio da proposta para arquivo principal");
+  });
 });

@@ -3,8 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +116,6 @@ export function SuppliersCrud({
   const searchParams = useSearchParams();
 
   const [suppliers, setSuppliers] = useState<SupplierPresenter[]>(initialSuppliers);
-  const [feedback, setFeedback] = useState<string | null>(initialError);
   const [editingSupplier, setEditingSupplier] = useState<SupplierPresenter | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(openCreateOnLoad);
   const [search, setSearch] = useState("");
@@ -135,6 +135,14 @@ export function SuppliersCrud({
     resolver: zodResolver(createSupplierSchema),
     defaultValues: defaultSupplierFormValues,
   });
+
+  useEffect(() => {
+    if (!initialError) {
+      return;
+    }
+
+    toast.error(initialError);
+  }, [initialError]);
 
   const clearCreateFlagFromUrl = () => {
     if (!searchParams.has("new")) {
@@ -159,7 +167,7 @@ export function SuppliersCrud({
     });
 
     if (!result.success) {
-      setFeedback(`Erro: ${result.error}`);
+      toast.error(`Erro: ${result.error}`);
       return;
     }
 
@@ -172,7 +180,6 @@ export function SuppliersCrud({
   };
 
   const openCreateModal = () => {
-    setFeedback(null);
     resetFormToCreate();
     setIsFormModalOpen(true);
   };
@@ -184,8 +191,6 @@ export function SuppliersCrud({
   };
 
   const onSubmit = form.handleSubmit((values) => {
-    setFeedback(null);
-
     startTransition(async () => {
       const normalizedInput = {
         legalName: values.legalName,
@@ -206,11 +211,11 @@ export function SuppliersCrud({
         : await createSupplierAction(normalizedInput);
 
       if (!result.success) {
-        setFeedback(`Erro: ${result.error}`);
+        toast.error(`Erro: ${result.error}`);
         return;
       }
 
-      setFeedback(
+      toast.success(
         editingSupplier
           ? `Fornecedor atualizado: ${result.data.legalName}`
           : `Fornecedor criado: ${result.data.legalName}`,
@@ -223,7 +228,6 @@ export function SuppliersCrud({
   });
 
   const applyFilters = () => {
-    setFeedback(null);
     startTransition(async () => {
       await refreshSuppliers(search, statusFilter);
     });
@@ -231,7 +235,6 @@ export function SuppliersCrud({
 
   const handleStatusTabChange = (value: string) => {
     setStatusFilter(value as StatusFilter);
-    setFeedback(null);
     startTransition(async () => {
       await refreshSuppliers(search, value as StatusFilter);
     });
@@ -239,7 +242,6 @@ export function SuppliersCrud({
 
   const handleEdit = (supplier: SupplierPresenter) => {
     setEditingSupplier(supplier);
-    setFeedback(null);
     form.reset({
       legalName: supplier.legalName,
       cnpj: formatCnpj(supplier.cnpj),
@@ -262,15 +264,13 @@ export function SuppliersCrud({
       return;
     }
 
-    setFeedback(null);
-
     startTransition(async () => {
       const result = await deleteSupplierAction({
         supplierId: supplier.id,
       });
 
       if (!result.success) {
-        setFeedback(`Erro: ${result.error}`);
+        toast.error(`Erro: ${result.error}`);
         return;
       }
 
@@ -279,7 +279,7 @@ export function SuppliersCrud({
         resetFormToCreate();
       }
 
-      setFeedback(`Fornecedor excluído: ${supplier.legalName}`);
+      toast.success(`Fornecedor excluído: ${supplier.legalName}`);
       await refreshSuppliers(search, statusFilter);
     });
   };
@@ -595,12 +595,6 @@ export function SuppliersCrud({
           </table>
         </CardContent>
       </Card>
-
-      {feedback ? (
-        <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-foreground">
-          {feedback}
-        </p>
-      ) : null}
     </div>
   );
 }

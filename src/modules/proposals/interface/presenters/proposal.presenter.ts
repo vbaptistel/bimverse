@@ -239,6 +239,7 @@ export interface ProposalDetailPresenter {
   };
   currentValueBrl: number | null;
   revisions: ProposalRevisionPresenter[];
+  proposalFiles: AttachmentPresenter[];
   attachments: AttachmentPresenter[];
   supplierLinks: ProposalSupplierLinkPresenter[];
   supplierOptions: SupplierOptionPresenter[];
@@ -261,6 +262,7 @@ export function presentProposalDetail(input: {
   proposal: ProposalDetailRecord;
   currentValueBrl: number | null;
   revisions: ProposalRevision[];
+  proposalFiles: Attachment[];
   attachments: Attachment[];
   supplierLinks: ProposalSupplierLink[];
   supplierOptions: Supplier[];
@@ -272,6 +274,7 @@ export function presentProposalDetail(input: {
     proposal: presentProposalDetailHeader(input.proposal),
     currentValueBrl: input.currentValueBrl,
     revisions: input.revisions.map(presentRevision),
+    proposalFiles: input.proposalFiles.map(presentAttachment),
     attachments: input.attachments.map(presentAttachment),
     supplierLinks: input.supplierLinks.map(presentSupplierLink),
     supplierOptions: input.supplierOptions.map(presentSupplierOption),
