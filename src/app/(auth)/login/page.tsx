@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ function toFriendlyAuthError(message: string): string {
   return "Nao foi possivel autenticar agora. Tente novamente.";
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -264,5 +264,15 @@ export default function LoginPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={<main className="min-h-screen bg-slate-950 font-[family-name:var(--font-ibm-plex-sans)]" />}
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
