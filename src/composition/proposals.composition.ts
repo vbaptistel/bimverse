@@ -5,6 +5,7 @@ import { CancelProposalRevisionUseCase } from "@/modules/proposals/application/u
 import { CloseProposalRevisionUseCase } from "@/modules/proposals/application/use-cases/close-proposal-revision.use-case";
 import { CreateProposalUseCase } from "@/modules/proposals/application/use-cases/create-proposal.use-case";
 import { CreateRevisionUseCase } from "@/modules/proposals/application/use-cases/create-revision.use-case";
+import { DeleteProposalUseCase } from "@/modules/proposals/application/use-cases/delete-proposal.use-case";
 import { GetProposalDetailUseCase } from "@/modules/proposals/application/use-cases/get-proposal-detail.use-case";
 import { ListProposalsUseCase } from "@/modules/proposals/application/use-cases/list-proposals.use-case";
 import { LinkProposalSupplierUseCase } from "@/modules/proposals/application/use-cases/link-proposal-supplier.use-case";
@@ -39,6 +40,11 @@ export function buildProposalsComposition() {
     createRevisionUseCase: new CreateRevisionUseCase(
       proposalRepository,
       revisionRepository,
+    ),
+    deleteProposalUseCase: new DeleteProposalUseCase(
+      proposalRepository,
+      attachmentRepository,
+      storagePort,
     ),
     getProposalDetailUseCase: new GetProposalDetailUseCase(
       proposalRepository,

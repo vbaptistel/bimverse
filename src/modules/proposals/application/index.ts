@@ -6,6 +6,7 @@ export * from "@/modules/proposals/application/use-cases/cancel-proposal-revisio
 export * from "@/modules/proposals/application/use-cases/close-proposal-revision.use-case";
 export * from "@/modules/proposals/application/use-cases/create-proposal.use-case";
 export * from "@/modules/proposals/application/use-cases/create-revision.use-case";
+export * from "@/modules/proposals/application/use-cases/delete-proposal.use-case";
 export * from "@/modules/proposals/application/use-cases/get-proposal-detail.use-case";
 export * from "@/modules/proposals/application/use-cases/list-proposals.use-case";
 export * from "@/modules/proposals/application/use-cases/link-proposal-supplier.use-case";

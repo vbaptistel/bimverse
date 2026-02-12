@@ -5,6 +5,7 @@ import { NotFoundError } from "@/shared/domain/errors";
 
 export interface GetAttachmentDownloadUrlInput {
   attachmentId: string;
+  download?: boolean;
 }
 
 export interface GetAttachmentDownloadUrlOutput {
@@ -38,6 +39,7 @@ export class GetAttachmentDownloadUrlUseCase
     const signedUrl = await this.storagePort.createSignedDownloadUrl(
       attachment.storagePath,
       expiresInSeconds,
+      input.download ? attachment.fileName : undefined,
     );
 
     return {

@@ -73,6 +73,7 @@ export interface ProposalRepositoryPort {
   createProposal(input: CreateProposalRecordInput): Promise<Proposal>;
   updateBaseFields(input: UpdateProposalBaseFieldsInput): Promise<Proposal>;
   getProposalById(proposalId: string): Promise<Proposal | null>;
+  deleteById(proposalId: string): Promise<void>;
   getProposalStorageContext(
     proposalId: string,
   ): Promise<ProposalStorageContext | null>;

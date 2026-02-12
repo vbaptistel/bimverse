@@ -16,5 +16,6 @@ export interface AttachmentRepositoryPort {
   createAttachment(input: CreateAttachmentRecordInput): Promise<Attachment>;
   findById(id: string): Promise<Attachment | null>;
   findManyByProposalId(proposalId: string): Promise<Attachment[]>;
+  deleteById(id: string): Promise<void>;
   deleteManyByRevisionId(revisionId: string): Promise<void>;
 }

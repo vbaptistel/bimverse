@@ -37,6 +37,8 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return null;
   }
 
+  async deleteById(): Promise<void> {}
+
   async getProposalStorageContext(): Promise<ProposalStorageContext | null> {
     return {
       proposalId: "proposal-1",
@@ -67,6 +69,8 @@ class FakeStoragePort implements StoragePort {
   async objectExists(): Promise<boolean> {
     return true;
   }
+
+  async deleteObject(): Promise<void> {}
 }
 
 describe("CreateAttachmentUploadUseCase", () => {

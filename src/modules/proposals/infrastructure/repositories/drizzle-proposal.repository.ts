@@ -269,6 +269,10 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
     return proposal ? toDomain(proposal) : null;
   }
 
+  async deleteById(proposalId: string): Promise<void> {
+    await this.database.delete(proposals).where(eq(proposals.id, proposalId));
+  }
+
   async getProposalStorageContext(
     proposalId: string,
   ): Promise<ProposalStorageContext | null> {

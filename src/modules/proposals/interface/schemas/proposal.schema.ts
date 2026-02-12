@@ -33,6 +33,10 @@ export const getProposalDetailSchema = z.object({
   proposalId: z.string().uuid(),
 });
 
+export const deleteProposalSchema = z.object({
+  proposalId: z.string().uuid(),
+});
+
 export const updateProposalBaseSchema = z.object({
   proposalId: z.string().uuid(),
   projectName: z.string().trim().min(3).max(220),
@@ -116,6 +120,7 @@ export const updateProposalStatusSchema = z.object({
 export type CreateProposalSchema = z.infer<typeof createProposalSchema>;
 export type CreateRevisionSchema = z.infer<typeof createRevisionSchema>;
 export type GetProposalDetailSchema = z.infer<typeof getProposalDetailSchema>;
+export type DeleteProposalSchema = z.infer<typeof deleteProposalSchema>;
 export type UpdateProposalBaseSchema = z.infer<typeof updateProposalBaseSchema>;
 export type PrepareRevisionDocumentUploadSchema = z.infer<
   typeof prepareRevisionDocumentUploadSchema

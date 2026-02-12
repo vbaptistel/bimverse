@@ -29,10 +29,15 @@ export class SupabaseStorageAdapter implements StoragePort {
   async createSignedDownloadUrl(
     path: string,
     expiresInSeconds: number,
+    download?: string | boolean,
   ): Promise<string> {
     const { data, error } = await this.supabase.storage
       .from(BUCKET_NAME)
-      .createSignedUrl(path, expiresInSeconds);
+      .createSignedUrl(
+        path,
+        expiresInSeconds,
+        download === undefined ? undefined : { download },
+      );
 
     if (error || !data?.signedUrl) {
       throw new ValidationError("Não foi possível gerar link de download");
@@ -62,5 +67,15 @@ export class SupabaseStorageAdapter implements StoragePort {
     }
 
     return !!data?.some((file) => file.name === fileName);
+  }
+
+  async deleteObject(path: string): Promise<void> {
+    const { error } = await this.supabase.storage
+      .from(BUCKET_NAME)
+      .remove([path]);
+
+    if (error) {
+      throw new ValidationError("Não foi possível excluir arquivo do storage");
+    }
   }
 }

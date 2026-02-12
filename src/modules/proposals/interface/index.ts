@@ -2,6 +2,7 @@ export * from "@/modules/proposals/interface/actions/cancel-proposal-revision.ac
 export * from "@/modules/proposals/interface/actions/close-proposal-revision.action";
 export * from "@/modules/proposals/interface/actions/create-proposal.action";
 export * from "@/modules/proposals/interface/actions/create-revision.action";
+export * from "@/modules/proposals/interface/actions/delete-proposal.action";
 export * from "@/modules/proposals/interface/actions/get-proposal-detail.action";
 export * from "@/modules/proposals/interface/actions/link-proposal-supplier.action";
 export * from "@/modules/proposals/interface/actions/list-proposals.action";

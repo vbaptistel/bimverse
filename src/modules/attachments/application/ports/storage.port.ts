@@ -6,6 +6,11 @@ export interface SignedUploadResult {
 
 export interface StoragePort {
   createSignedUploadUrl(path: string): Promise<SignedUploadResult>;
-  createSignedDownloadUrl(path: string, expiresInSeconds: number): Promise<string>;
+  createSignedDownloadUrl(
+    path: string,
+    expiresInSeconds: number,
+    download?: string | boolean,
+  ): Promise<string>;
   objectExists(path: string): Promise<boolean>;
+  deleteObject(path: string): Promise<void>;
 }

@@ -79,6 +79,9 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     };
   }
 
+
+  async deleteById(): Promise<void> {}
+
   async getProposalStorageContext(): Promise<ProposalStorageContext | null> {
     return this.storageContext;
   }
@@ -133,6 +136,8 @@ class FakeStoragePort implements StoragePort {
   async objectExists(): Promise<boolean> {
     return true;
   }
+
+  async deleteObject(): Promise<void> {}
 }
 
 function buildRevision(revisionNumber: number): ProposalRevision {

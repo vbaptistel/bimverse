@@ -39,10 +39,14 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
     return [];
   }
 
+  async deleteById() {}
+
   async deleteManyByRevisionId() {}
 }
 
 class FakeStoragePort implements StoragePort {
+  lastDownloadName: string | boolean | undefined;
+
   async createSignedUploadUrl() {
     return {
       path: "path/arquivo.pdf",
@@ -51,20 +55,28 @@ class FakeStoragePort implements StoragePort {
     };
   }
 
-  async createSignedDownloadUrl(): Promise<string> {
+  async createSignedDownloadUrl(
+    _path: string,
+    _expiresInSeconds: number,
+    download?: string | boolean,
+  ): Promise<string> {
+    this.lastDownloadName = download;
     return "https://signed-download";
   }
 
   async objectExists(): Promise<boolean> {
     return true;
   }
+
+  async deleteObject(): Promise<void> {}
 }
 
 describe("GetAttachmentDownloadUrlUseCase", () => {
   it("gera link assinado de download", async () => {
+    const storage = new FakeStoragePort();
     const useCase = new GetAttachmentDownloadUrlUseCase(
       new FakeAttachmentRepository(),
-      new FakeStoragePort(),
+      storage,
     );
 
     const output = await useCase.execute({ attachmentId: "att-1" });
@@ -77,5 +89,18 @@ describe("GetAttachmentDownloadUrlUseCase", () => {
       fileName: "arquivo.pdf",
       mimeType: "application/pdf",
     });
+    expect(storage.lastDownloadName).toBeUndefined();
+  });
+
+  it("gera link com nome original quando for download direto", async () => {
+    const storage = new FakeStoragePort();
+    const useCase = new GetAttachmentDownloadUrlUseCase(
+      new FakeAttachmentRepository(),
+      storage,
+    );
+
+    await useCase.execute({ attachmentId: "att-1", download: true });
+
+    expect(storage.lastDownloadName).toBe("arquivo.pdf");
   });
 });

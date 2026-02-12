@@ -55,6 +55,8 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     };
   }
 
+  async deleteById(): Promise<void> {}
+
   async getProposalStorageContext(): Promise<ProposalStorageContext | null> {
     return null;
   }
@@ -88,6 +90,8 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
     return [];
   }
 
+  async deleteById() {}
+
   async deleteManyByRevisionId() {}
 }
 
@@ -109,6 +113,8 @@ class FakeStoragePort implements StoragePort {
   async objectExists(): Promise<boolean> {
     return this.exists;
   }
+
+  async deleteObject(): Promise<void> {}
 }
 
 describe("FinalizeAttachmentUseCase", () => {

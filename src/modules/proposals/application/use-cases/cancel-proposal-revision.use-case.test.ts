@@ -98,6 +98,9 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return this.proposal;
   }
 
+
+  async deleteById(): Promise<void> {}
+
   async getProposalStorageContext(): Promise<ProposalStorageContext | null> {
     return null;
   }
@@ -226,6 +229,8 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
   async findManyByProposalId(): Promise<Attachment[]> {
     return [];
   }
+
+  async deleteById(): Promise<void> {}
 
   async deleteManyByRevisionId(revisionId: string): Promise<void> {
     this.deletedRevisionId = revisionId;

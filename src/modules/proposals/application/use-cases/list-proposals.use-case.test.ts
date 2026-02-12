@@ -62,6 +62,8 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return null;
   }
 
+  async deleteById(): Promise<void> {}
+
   async getProposalStorageContext(): Promise<ProposalStorageContext | null> {
     return null;
   }

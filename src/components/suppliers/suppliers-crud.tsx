@@ -8,6 +8,16 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,6 +127,8 @@ export function SuppliersCrud({
 
   const [suppliers, setSuppliers] = useState<SupplierPresenter[]>(initialSuppliers);
   const [editingSupplier, setEditingSupplier] = useState<SupplierPresenter | null>(null);
+  const [supplierPendingDelete, setSupplierPendingDelete] =
+    useState<SupplierPresenter | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(openCreateOnLoad);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -256,13 +268,16 @@ export function SuppliersCrud({
   };
 
   const handleDelete = (supplier: SupplierPresenter) => {
-    const confirmed = window.confirm(
-      `Excluir o fornecedor "${supplier.legalName}"? Essa ação não pode ser desfeita.`,
-    );
+    setSupplierPendingDelete(supplier);
+  };
 
-    if (!confirmed) {
+  const handleConfirmDelete = () => {
+    if (!supplierPendingDelete) {
       return;
     }
+
+    const supplier = supplierPendingDelete;
+    setSupplierPendingDelete(null);
 
     startTransition(async () => {
       const result = await deleteSupplierAction({
@@ -488,6 +503,36 @@ export function SuppliersCrud({
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!supplierPendingDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSupplierPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir fornecedor</AlertDialogTitle>
+            <AlertDialogDescription>
+              {supplierPendingDelete
+                ? `Excluir o fornecedor "${supplierPendingDelete.legalName}"? Essa ação não pode ser desfeita.`
+                : "Essa ação não pode ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmDelete}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ListFiltersBar
         tabs={[

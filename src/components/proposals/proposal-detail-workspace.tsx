@@ -9,19 +9,31 @@ import {
   History,
   Link2,
   Loader2,
+  MoreVertical,
   Pencil,
   Plus,
   RotateCcw,
   Save,
+  Trash2,
   UsersRound,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +51,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -51,6 +71,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   createAttachmentUploadAction,
+  deleteAttachmentAction,
   finalizeAttachmentAction,
   getAttachmentDownloadUrlAction,
   getAttachmentOpenPath,
@@ -58,6 +79,7 @@ import {
 import {
   cancelProposalRevisionAction,
   closeProposalRevisionAction,
+  deleteProposalAction,
   linkProposalSupplierAction,
   prepareProposalSendUploadAction,
   prepareRevisionDocumentUploadAction,
@@ -218,6 +240,16 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const [statusReason, setStatusReason] = useState("");
   const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
   const [isTimelineModalOpen, setTimelineModalOpen] = useState(false);
+  const [isCancelRevisionConfirmOpen, setCancelRevisionConfirmOpen] = useState(false);
+  const [supplierPendingUnlink, setSupplierPendingUnlink] = useState<{
+    linkId: string;
+    supplierName: string;
+  } | null>(null);
+  const [isDeleteProposalConfirmOpen, setDeleteProposalConfirmOpen] = useState(false);
+  const [attachmentPendingDelete, setAttachmentPendingDelete] = useState<{
+    attachmentId: string;
+    fileName: string;
+  } | null>(null);
 
   const isFinalStatus =
     detail.proposal.status === "ganha" ||
@@ -227,6 +259,8 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const isInReview = detail.proposal.status === "em_revisao";
   const canStartRevision = detail.proposal.status === "enviada";
   const canEditCriticalFields = isInReview && !isFinalStatus;
+  const canDeleteProposal =
+    detail.proposal.status === "recebida" || detail.proposal.status === "em_elaboracao";
 
   const dateTimeFormatter = useMemo(
     () =>
@@ -315,7 +349,10 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     [detail.revisions],
   );
   const proposalFileByRevisionId = useMemo(() => {
-    const byRevisionId = new Map<string, (typeof detail.proposalFiles)[number]>();
+    const byRevisionId = new Map<
+      string,
+      ProposalDetailPresenter["proposalFiles"][number]
+    >();
 
     for (const proposalFile of detail.proposalFiles) {
       if (!proposalFile.revisionId) {
@@ -339,10 +376,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     return byRevisionId;
   }, [detail.proposalFiles]);
 
-  const currentEstimatedValueBrl = baseForm.watch("estimatedValueBrl");
+  const currentEstimatedValueBrl = useWatch({
+    control: baseForm.control,
+    name: "estimatedValueBrl",
+  });
   const latestRevisionValueBrl = useMemo(() => {
     const latestRevision = detail.revisions.reduce<
-      (typeof detail.revisions)[number] | null
+      ProposalDetailPresenter["revisions"][number] | null
     >((latest, revision) => {
       if (!latest || revision.revisionNumber > latest.revisionNumber) {
         return revision;
@@ -355,7 +395,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     }
 
     return latestRevision.valueAfterBrl ?? latestRevision.valueBeforeBrl ?? null;
-  }, [detail]);
+  }, [detail.revisions]);
 
   const revisionDiscountPreview = useMemo(() => {
     if (
@@ -396,7 +436,10 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       ),
     ];
   }, [detail.proposal.status, isInReview]);
-  const selectedStatusInModal = statusForm.watch("status");
+  const selectedStatusInModal = useWatch({
+    control: statusForm.control,
+    name: "status",
+  });
   const statusRequiresReasonInModal =
     selectedStatusInModal === "perdida" || selectedStatusInModal === "cancelada";
   const statusRequiresDateInModal =
@@ -420,26 +463,55 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
     return null;
   }, [baseRevision, detail.pendingRevisionCycle, detail.proposal.status]);
+  const activeSupplierRevisionId = useMemo(() => {
+    if (detail.revisions.length === 0) {
+      return null;
+    }
+
+    if (
+      selectedSupplierRevisionId !== null &&
+      revisionById.has(selectedSupplierRevisionId)
+    ) {
+      return selectedSupplierRevisionId;
+    }
+
+    return currentSupplierRevisionId ?? detail.revisions[0]!.id;
+  }, [
+    currentSupplierRevisionId,
+    detail.revisions,
+    revisionById,
+    selectedSupplierRevisionId,
+  ]);
   const canManageSuppliersByStatus =
     detail.proposal.status === "em_elaboracao" || detail.proposal.status === "em_revisao";
-  const selectedSupplierRevisionNumber = selectedSupplierRevisionId
-    ? revisionById.get(selectedSupplierRevisionId)?.revisionNumber ?? null
+  const selectedSupplierRevisionNumber = activeSupplierRevisionId
+    ? revisionById.get(activeSupplierRevisionId)?.revisionNumber ?? null
     : null;
   const isViewingCurrentSupplierRevision =
-    selectedSupplierRevisionId !== null &&
+    activeSupplierRevisionId !== null &&
     currentSupplierRevisionId !== null &&
-    selectedSupplierRevisionId === currentSupplierRevisionId;
+    activeSupplierRevisionId === currentSupplierRevisionId;
   const canManageSupplierLinks =
     canManageSuppliersByStatus &&
     currentSupplierRevisionId !== null &&
     isViewingCurrentSupplierRevision;
-  const selectedSupplierId = supplierLinkForm.watch("supplierId");
-  const selectedSupplierHourlyCost = supplierLinkForm.watch("quotedHourlyCostBrl");
-  const selectedSupplierEstimatedHours = supplierLinkForm.watch("estimatedHours");
-  const selectedSupplierQuotedTotal = supplierLinkForm.watch("quotedTotalBrl");
-  const selectedEditSupplierHourlyCost = supplierEditForm.watch("quotedHourlyCostBrl");
-  const selectedEditSupplierEstimatedHours = supplierEditForm.watch("estimatedHours");
-  const selectedEditSupplierQuotedTotal = supplierEditForm.watch("quotedTotalBrl");
+  const [
+    selectedSupplierId,
+    selectedSupplierHourlyCost,
+    selectedSupplierEstimatedHours,
+    selectedSupplierQuotedTotal,
+  ] = useWatch({
+    control: supplierLinkForm.control,
+    name: ["supplierId", "quotedHourlyCostBrl", "estimatedHours", "quotedTotalBrl"],
+  });
+  const [
+    selectedEditSupplierHourlyCost,
+    selectedEditSupplierEstimatedHours,
+    selectedEditSupplierQuotedTotal,
+  ] = useWatch({
+    control: supplierEditForm.control,
+    name: ["quotedHourlyCostBrl", "estimatedHours", "quotedTotalBrl"],
+  });
 
   const supplierOptionsById = useMemo(
     () => new Map(detail.supplierOptions.map((supplier) => [supplier.id, supplier])),
@@ -447,12 +519,12 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   );
   const selectedSupplierLinks = useMemo(
     () =>
-      selectedSupplierRevisionId
+      activeSupplierRevisionId
         ? detail.supplierLinks.filter(
-          (link) => link.revisionId === selectedSupplierRevisionId,
+          (link) => link.revisionId === activeSupplierRevisionId,
         )
         : [],
-    [detail.supplierLinks, selectedSupplierRevisionId],
+    [activeSupplierRevisionId, detail.supplierLinks],
   );
   const currentRevisionLinkedSupplierIds = useMemo(
     () =>
@@ -498,29 +570,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       shouldDirty: false,
     });
   }, [statusRequiresDateInModal, statusForm]);
-
-  useEffect(() => {
-    if (detail.revisions.length === 0) {
-      if (selectedSupplierRevisionId !== null) {
-        setSelectedSupplierRevisionId(null);
-      }
-      return;
-    }
-
-    if (
-      selectedSupplierRevisionId !== null &&
-      revisionById.has(selectedSupplierRevisionId)
-    ) {
-      return;
-    }
-
-    setSelectedSupplierRevisionId(currentSupplierRevisionId ?? detail.revisions[0]!.id);
-  }, [
-    currentSupplierRevisionId,
-    detail.revisions,
-    revisionById,
-    selectedSupplierRevisionId,
-  ]);
 
   useEffect(() => {
     if (!selectedSupplierId) {
@@ -844,14 +893,11 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   });
 
   const handleCancelRevision = () => {
-    const confirmed = window.confirm(
-      "Cancelar revisão atual? As alterações críticas serão revertidas.",
-    );
+    setCancelRevisionConfirmOpen(true);
+  };
 
-    if (!confirmed) {
-      return;
-    }
-
+  const handleConfirmCancelRevision = () => {
+    setCancelRevisionConfirmOpen(false);
     startTransition(async () => {
       const result = await cancelProposalRevisionAction({
         proposalId: detail.proposal.id,
@@ -974,7 +1020,43 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         return;
       }
 
-      window.open(result.data.signedUrl, "_blank", "noopener,noreferrer");
+      const link = document.createElement("a");
+      link.href = result.data.signedUrl;
+      link.download = result.data.attachment.fileName;
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+  };
+
+  const handleDeleteAttachment = (attachmentId: string, fileName: string) => {
+    setAttachmentPendingDelete({
+      attachmentId,
+      fileName,
+    });
+  };
+
+  const handleConfirmDeleteAttachment = () => {
+    if (!attachmentPendingDelete) {
+      return;
+    }
+
+    const pendingDelete = attachmentPendingDelete;
+    setAttachmentPendingDelete(null);
+
+    startTransition(async () => {
+      const result = await deleteAttachmentAction({
+        attachmentId: pendingDelete.attachmentId,
+      });
+
+      if (!result.success) {
+        toast.error(`Erro ao excluir anexo: ${result.error}`);
+        return;
+      }
+
+      toast.success(`Anexo excluído: ${pendingDelete.fileName}`);
+      router.refresh();
     });
   };
 
@@ -1075,16 +1157,24 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       return;
     }
 
-    const confirmed = window.confirm(
-      `Desvincular fornecedor "${supplierName}" desta proposta?`,
-    );
+    setSupplierPendingUnlink({
+      linkId,
+      supplierName,
+    });
+  };
 
-    if (!confirmed) {
+  const handleConfirmUnlinkSupplier = () => {
+    if (!supplierPendingUnlink) {
       return;
     }
 
+    const pendingUnlink = supplierPendingUnlink;
+    setSupplierPendingUnlink(null);
+
     startTransition(async () => {
-      const result = await unlinkProposalSupplierAction({ linkId });
+      const result = await unlinkProposalSupplierAction({
+        linkId: pendingUnlink.linkId,
+      });
       if (!result.success) {
         toast.error(`Erro ao desvincular fornecedor: ${result.error}`);
         return;
@@ -1092,6 +1182,32 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
       toast.success("Fornecedor desvinculado.");
       router.refresh();
+    });
+  };
+
+  const handleDeleteProposal = () => {
+    if (!canDeleteProposal) {
+      toast.error("Só é possível excluir propostas recebidas ou em elaboração.");
+      return;
+    }
+
+    setDeleteProposalConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteProposal = () => {
+    setDeleteProposalConfirmOpen(false);
+    startTransition(async () => {
+      const result = await deleteProposalAction({
+        proposalId: detail.proposal.id,
+      });
+
+      if (!result.success) {
+        toast.error(`Erro ao excluir proposta: ${result.error}`);
+        return;
+      }
+
+      toast.success(`Proposta excluída: ${detail.proposal.code}`);
+      router.push("/propostas");
     });
   };
 
@@ -1126,21 +1242,76 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              {canStartRevision ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleStartRevision}
-                  disabled={isPending}
-                >
-                  {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-                  Criar nova revisão
-                </Button>
-              ) : null}
-              <Button type="button" onClick={() => setStatusModalOpen(true)} disabled={isPending}>
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <Button
+                type="button"
+                disabled={isPending}
+                onClick={() => setStatusModalOpen(true)}
+              >
+                {isPending ? <Loader2 className="animate-spin" /> : <Pencil />}
                 Alterar status
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={isPending}
+                    aria-label="Mais ações da proposta"
+                  >
+                    <MoreVertical />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Fluxo</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={isPending || !canStartRevision}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      handleStartRevision();
+                    }}
+                  >
+                    <Plus />
+                    Criar nova revisão
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Consulta</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={isPending}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setHistoryModalOpen(true);
+                    }}
+                  >
+                    <History />
+                    Histórico de atividades
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isPending}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setTimelineModalOpen(true);
+                    }}
+                  >
+                    <FileClock />
+                    Cronologia e prazos
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Perigo</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={isPending || !canDeleteProposal}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      handleDeleteProposal();
+                    }}
+                  >
+                    <Trash2 />
+                    Excluir
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -1448,7 +1619,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                                   rel="noopener noreferrer"
                                 >
                                   <Eye />
-                                  Visualizar
                                 </a>
                               </Button>
                               <Button
@@ -1463,7 +1633,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                                 ) : (
                                   <FileDown />
                                 )}
-                                Download
                               </Button>
                             </div>
                           ) : (
@@ -1544,7 +1713,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                                 rel="noopener noreferrer"
                               >
                                 <Eye />
-                                Visualizar
                               </a>
                             </Button>
                             <Button
@@ -1555,7 +1723,17 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                               disabled={isPending}
                             >
                               {isPending ? <Loader2 className="animate-spin" /> : <FileDown />}
-                              Download
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                handleDeleteAttachment(attachment.id, attachment.fileName)
+                              }
+                              disabled={isPending}
+                            >
+                              <Trash2 />
                             </Button>
                           </div>
                         </td>
@@ -1588,7 +1766,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   Revisão exibida
                 </Label>
                 <Select
-                  value={selectedSupplierRevisionId ?? undefined}
+                  value={activeSupplierRevisionId ?? undefined}
                   onValueChange={(value) => setSelectedSupplierRevisionId(value)}
                   disabled={detail.revisions.length === 0}
                 >
@@ -1699,26 +1877,113 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         </Card>
       </section>
 
-      <section>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setHistoryModalOpen(true)}
-          >
-            <History size={16} /> Histórico de atividades
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setTimelineModalOpen(true)}
-          >
-            <FileClock size={16} /> Cronologia e prazos
-          </Button>
-        </div>
-      </section>
+      <AlertDialog
+        open={isCancelRevisionConfirmOpen}
+        onOpenChange={setCancelRevisionConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar revisão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancelar revisão atual? As alterações críticas serão revertidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmCancelRevision}
+            >
+              Cancelar revisão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!supplierPendingUnlink}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSupplierPendingUnlink(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desvincular fornecedor</AlertDialogTitle>
+            <AlertDialogDescription>
+              {supplierPendingUnlink
+                ? `Desvincular fornecedor "${supplierPendingUnlink.supplierName}" desta proposta?`
+                : "Essa ação não poderá ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmUnlinkSupplier}
+            >
+              Desvincular
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!attachmentPendingDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAttachmentPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir anexo</AlertDialogTitle>
+            <AlertDialogDescription>
+              {attachmentPendingDelete
+                ? `Excluir o anexo "${attachmentPendingDelete.fileName}"? Essa ação não pode ser desfeita.`
+                : "Essa ação não pode ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmDeleteAttachment}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isDeleteProposalConfirmOpen}
+        onOpenChange={setDeleteProposalConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir proposta</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Excluir a proposta "${detail.proposal.code}"? Essa ação não pode ser desfeita.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmDeleteProposal}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isHistoryModalOpen} onOpenChange={setHistoryModalOpen}>
         <DialogContent className="sm:max-w-lg">

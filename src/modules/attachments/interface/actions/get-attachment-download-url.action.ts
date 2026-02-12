@@ -29,7 +29,10 @@ export async function getAttachmentDownloadUrlAction(
 
     const input = getAttachmentDownloadSchema.parse(rawInput);
     const { getAttachmentDownloadUrlUseCase } = buildAttachmentsComposition();
-    const result = await getAttachmentDownloadUrlUseCase.execute(input);
+    const result = await getAttachmentDownloadUrlUseCase.execute({
+      ...input,
+      download: true,
+    });
 
     return {
       success: true,

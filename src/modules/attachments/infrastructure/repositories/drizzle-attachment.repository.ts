@@ -70,6 +70,12 @@ export class DrizzleAttachmentRepository implements AttachmentRepositoryPort {
     return rows.map(toDomain);
   }
 
+  async deleteById(id: string): Promise<void> {
+    await this.database
+      .delete(attachments)
+      .where(eq(attachments.id, id));
+  }
+
   async deleteManyByRevisionId(revisionId: string): Promise<void> {
     await this.database
       .delete(attachments)

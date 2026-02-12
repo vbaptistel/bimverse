@@ -1,4 +1,5 @@
 import { CreateAttachmentUploadUseCase } from "@/modules/attachments/application/use-cases/create-attachment-upload.use-case";
+import { DeleteAttachmentUseCase } from "@/modules/attachments/application/use-cases/delete-attachment.use-case";
 import { FinalizeAttachmentUseCase } from "@/modules/attachments/application/use-cases/finalize-attachment.use-case";
 import { GetAttachmentDownloadUrlUseCase } from "@/modules/attachments/application/use-cases/get-attachment-download-url.use-case";
 import { DrizzleAttachmentRepository } from "@/modules/attachments/infrastructure/repositories/drizzle-attachment.repository";
@@ -18,6 +19,10 @@ export function buildAttachmentsComposition() {
     ),
     finalizeAttachmentUseCase: new FinalizeAttachmentUseCase(
       proposalRepository,
+      attachmentRepository,
+      storagePort,
+    ),
+    deleteAttachmentUseCase: new DeleteAttachmentUseCase(
       attachmentRepository,
       storagePort,
     ),

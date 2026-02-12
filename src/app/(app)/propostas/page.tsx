@@ -1,20 +1,31 @@
 "use client";
 
 import type { Column, ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Plus, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { CreateProposalForm } from "@/components/proposals/create-proposal-form";
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import {
-  type ProposalPresenter,
+  deleteProposalAction,
   listProposalsAction,
+  type ProposalPresenter,
 } from "@/modules/proposals/interface";
 import { formatCurrencyBrl } from "@/shared/domain/currency";
 import { PROPOSAL_STATUSES, type ProposalStatus } from "@/shared/domain/types";
@@ -40,6 +51,10 @@ const PROPOSAL_STATUS_BADGE_CLASSNAMES: Record<ProposalStatus, string> = {
 };
 
 type StatusFilter = "all" | ProposalStatus;
+
+function canDeleteProposal(status: ProposalStatus): boolean {
+  return status === "recebida" || status === "em_elaboracao";
+}
 
 function toNullableText(value?: string | null): string | null {
   if (!value) {
@@ -101,6 +116,8 @@ export default function ProposalsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [proposals, setProposals] = useState<ProposalPresenter[]>([]);
+  const [proposalPendingDelete, setProposalPendingDelete] =
+    useState<ProposalPresenter | null>(null);
   const isCreateModalVisible = isCreateModalOpen || searchParams.has("new");
 
   const dateFormatter = useMemo(
@@ -237,16 +254,44 @@ export default function ProposalsPage() {
       {
         id: "actions",
         enableSorting: false,
-        cell: ({ row }) => (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => router.push(`/propostas/${row.original.id}`)}
-          >
-            <Eye className="size-3.5" />
-          </Button>
-        ),
+        cell: ({ row }) => {
+          const canDelete = canDeleteProposal(row.original.status);
+
+          return (
+            <div className="flex items-center justify-end gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => router.push(`/propostas/${row.original.id}`)}
+              >
+                <Eye className="size-3.5" />
+              </Button>
+              {canDelete ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    disabled={!canDelete}
+                    onClick={() => {
+                      if (!canDelete) {
+                        toast.error(
+                          "Só é possível excluir propostas recebidas ou em elaboração.",
+                        );
+                        return;
+                      }
+
+                      setProposalPendingDelete(row.original);
+                    }}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          );
+        },
       },
     ],
     [dateFormatter, router],
@@ -309,6 +354,31 @@ export default function ProposalsPage() {
     });
   };
 
+  const handleConfirmDeleteProposal = () => {
+    if (!proposalPendingDelete) {
+      return;
+    }
+
+    const proposal = proposalPendingDelete;
+    setProposalPendingDelete(null);
+
+    startTransition(async () => {
+      const result = await deleteProposalAction({
+        proposalId: proposal.id,
+      });
+
+      if (!result.success) {
+        toast.error(`Erro ao excluir proposta: ${result.error}`);
+        return;
+      }
+
+      setProposals((current) =>
+        current.filter((currentProposal) => currentProposal.id !== proposal.id),
+      );
+      toast.success(`Proposta excluída: ${proposal.code}`);
+    });
+  };
+
   return (
     <div className="space-y-4">
       <ListFiltersBar
@@ -344,6 +414,36 @@ export default function ProposalsPage() {
           });
         }}
       />
+
+      <AlertDialog
+        open={!!proposalPendingDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProposalPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir proposta</AlertDialogTitle>
+            <AlertDialogDescription>
+              {proposalPendingDelete
+                ? `Excluir a proposta "${proposalPendingDelete.code}"? Essa ação não pode ser desfeita.`
+                : "Essa ação não pode ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmDeleteProposal}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card>
         <CardContent>

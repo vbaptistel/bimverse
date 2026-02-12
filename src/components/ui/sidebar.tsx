@@ -451,7 +451,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
     <ul
       data-slot="sidebar-menu"
       data-sidebar="menu"
-      className={cn("gap-0 flex w-full min-w-0 flex-col", className)}
+      className={cn("m-0 list-none gap-0 p-0 flex w-full min-w-0 flex-col", className)}
       {...props}
     />
   );
@@ -462,7 +462,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
     <li
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
-      className={cn("group/menu-item relative", className)}
+      className={cn("group/menu-item relative block list-none", className)}
       {...props}
     />
   );
@@ -625,7 +625,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
     <ul
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
-      className={cn("border-sidebar-border mx-3.5 translate-x-px gap-1 border-l px-2.5 py-0.5 group-data-[collapsible=icon]:hidden flex min-w-0 flex-col", className)}
+      className={cn("border-sidebar-border mx-3.5 translate-x-px list-none gap-1 border-l px-2.5 py-0.5 group-data-[collapsible=icon]:hidden flex min-w-0 flex-col", className)}
       {...props}
     />
   );
@@ -639,7 +639,7 @@ function SidebarMenuSubItem({
     <li
       data-slot="sidebar-menu-sub-item"
       data-sidebar="menu-sub-item"
-      className={cn("group/menu-sub-item relative", className)}
+      className={cn("group/menu-sub-item relative block list-none", className)}
       {...props}
     />
   );
@@ -699,4 +699,3 @@ export {
   SidebarTrigger,
   useSidebar
 };
-

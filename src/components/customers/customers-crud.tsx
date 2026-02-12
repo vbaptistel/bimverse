@@ -8,6 +8,16 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,6 +107,8 @@ export function CustomersCrud({
 
   const [customers, setCustomers] = useState<CustomerPresenter[]>(initialCustomers);
   const [editingCustomer, setEditingCustomer] = useState<CustomerPresenter | null>(null);
+  const [customerPendingDelete, setCustomerPendingDelete] =
+    useState<CustomerPresenter | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(openCreateOnLoad);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -230,13 +242,16 @@ export function CustomersCrud({
   };
 
   const handleDelete = (customer: CustomerPresenter) => {
-    const confirmed = window.confirm(
-      `Excluir o cliente "${customer.name}"? Essa ação não pode ser desfeita.`,
-    );
+    setCustomerPendingDelete(customer);
+  };
 
-    if (!confirmed) {
+  const handleConfirmDelete = () => {
+    if (!customerPendingDelete) {
       return;
     }
+
+    const customer = customerPendingDelete;
+    setCustomerPendingDelete(null);
 
     startTransition(async () => {
       const result = await deleteCustomerAction({
@@ -393,6 +408,36 @@ export function CustomersCrud({
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!customerPendingDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCustomerPendingDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              {customerPendingDelete
+                ? `Excluir o cliente "${customerPendingDelete.name}"? Essa ação não pode ser desfeita.`
+                : "Essa ação não pode ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={handleConfirmDelete}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ListFiltersBar
         tabs={[

@@ -24,6 +24,10 @@ export const getAttachmentDownloadSchema = z.object({
   attachmentId: z.string().uuid(),
 });
 
+export const deleteAttachmentSchema = z.object({
+  attachmentId: z.string().uuid(),
+});
+
 export type CreateAttachmentUploadSchema = z.infer<
   typeof createAttachmentUploadSchema
 >;
@@ -31,3 +35,4 @@ export type FinalizeAttachmentSchema = z.infer<typeof finalizeAttachmentSchema>;
 export type GetAttachmentDownloadSchema = z.infer<
   typeof getAttachmentDownloadSchema
 >;
+export type DeleteAttachmentSchema = z.infer<typeof deleteAttachmentSchema>;
