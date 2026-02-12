@@ -1,13 +1,22 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -34,6 +43,7 @@ import { COMPANY_STATUSES, type CompanyStatus } from "@/shared/domain/types";
 interface CompaniesCrudProps {
   initialCompanies: CompanyPresenter[];
   initialError?: string | null;
+  openCreateOnLoad?: boolean;
 }
 
 const defaultCompanyFormValues: CreateCompanySchema = {
@@ -77,10 +87,16 @@ const COMPANY_STATUS_BADGE_VARIANTS: Record<
 export function CompaniesCrud({
   initialCompanies,
   initialError = null,
+  openCreateOnLoad = false,
 }: CompaniesCrudProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [companies, setCompanies] = useState<CompanyPresenter[]>(initialCompanies);
   const [feedback, setFeedback] = useState<string | null>(initialError);
   const [editingCompany, setEditingCompany] = useState<CompanyPresenter | null>(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(openCreateOnLoad);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [isPending, startTransition] = useTransition();
@@ -98,6 +114,19 @@ export function CompaniesCrud({
     resolver: zodResolver(createCompanySchema),
     defaultValues: defaultCompanyFormValues,
   });
+
+  const clearCreateFlagFromUrl = () => {
+    if (!searchParams.has("new")) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("new");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+      scroll: false,
+    });
+  };
 
   const refreshCompanies = async (
     nextSearch: string,
@@ -119,6 +148,18 @@ export function CompaniesCrud({
   const resetFormToCreate = () => {
     setEditingCompany(null);
     form.reset(defaultCompanyFormValues);
+  };
+
+  const openCreateModal = () => {
+    setFeedback(null);
+    resetFormToCreate();
+    setIsFormModalOpen(true);
+  };
+
+  const closeFormModalAndReset = () => {
+    setIsFormModalOpen(false);
+    clearCreateFlagFromUrl();
+    resetFormToCreate();
   };
 
   const onSubmit = form.handleSubmit((values) => {
@@ -150,6 +191,8 @@ export function CompaniesCrud({
           ? `Empresa atualizada: ${result.data.name}`
           : `Empresa criada: ${result.data.name}`,
       );
+      setIsFormModalOpen(false);
+      clearCreateFlagFromUrl();
       resetFormToCreate();
       await refreshCompanies(search, statusFilter);
     });
@@ -184,6 +227,7 @@ export function CompaniesCrud({
       notes: company.notes,
       status: company.status,
     });
+    setIsFormModalOpen(true);
   };
 
   const handleDelete = (company: CompanyPresenter) => {
@@ -208,6 +252,7 @@ export function CompaniesCrud({
       }
 
       if (editingCompany?.id === company.id) {
+        setIsFormModalOpen(false);
         resetFormToCreate();
       }
 
@@ -220,7 +265,7 @@ export function CompaniesCrud({
     <>
       <section className="mb-4 rounded-xl border border-[#d6dde6] bg-white p-4">
         <form
-          className="grid gap-3 md:grid-cols-[2fr_1fr_auto_auto]"
+          className="grid gap-3 md:grid-cols-[2fr_1fr_auto_auto_auto]"
           onSubmit={handleApplyFilters}
         >
           <div className="relative">
@@ -253,6 +298,14 @@ export function CompaniesCrud({
             </SelectContent>
           </Select>
 
+          <Button
+            type="button"
+            onClick={openCreateModal}
+            disabled={isPending}
+          >
+            <Plus size={14} /> Nova empresa
+          </Button>
+
           <Button type="submit" variant="secondary" disabled={isPending}>
             {isPending ? "Filtrando..." : "Aplicar filtros"}
           </Button>
@@ -268,16 +321,25 @@ export function CompaniesCrud({
         </form>
       </section>
 
-      <Card id="company-form" className="mb-4">
-        <CardHeader>
-          <CardTitle>
-            {editingCompany ? "Editar empresa" : "Nova empresa"}
-          </CardTitle>
-          <CardDescription>
-            Cadastro base de clientes para geração sequencial de propostas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Dialog
+        open={isFormModalOpen}
+        onOpenChange={(open) => {
+          setIsFormModalOpen(open);
+          if (!open) {
+            clearCreateFlagFromUrl();
+            resetFormToCreate();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCompany ? "Editar empresa" : "Nova empresa"}
+            </DialogTitle>
+            <DialogDescription>
+              Cadastro base de clientes para geração sequencial de propostas.
+            </DialogDescription>
+          </DialogHeader>
           <form className="grid gap-4" onSubmit={onSubmit}>
             <div className="grid gap-2 md:grid-cols-2">
               <div className="grid gap-2">
@@ -370,17 +432,15 @@ export function CompaniesCrud({
               />
             </div>
 
-            <div className="flex flex-wrap justify-end gap-2">
-              {editingCompany ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={resetFormToCreate}
-                  disabled={isPending}
-                >
-                  Cancelar edição
-                </Button>
-              ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeFormModalAndReset}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending
                   ? editingCompany
@@ -390,10 +450,10 @@ export function CompaniesCrud({
                     ? "Salvar alterações"
                     : "Criar empresa"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

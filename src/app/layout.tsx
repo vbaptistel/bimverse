@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Sora, Figtree } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Sora } from "next/font/google";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
-
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
 const sora = Sora({
   variable: "--font-sora",
   subsets: ["latin"],
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -27,9 +32,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={figtree.variable}>
-      <body className={`${sora.variable} ${ibmPlexMono.variable} antialiased`}>
-        {children}
+    <html
+      lang="pt-BR"
+      className={`${sora.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
+    >
+      <body className="antialiased">
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );

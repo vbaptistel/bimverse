@@ -1,62 +1,55 @@
-import { ChartNoAxesCombined, TrendingUp, Trophy } from "lucide-react";
-
-import { PageHeader } from "@/components/shared/page-header";
-import { Button } from "@/components/ui/button";
+import { SectionCards } from "@/components/dashboard/section-cards";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const kpis = [
+const sectionCardsData = [
   {
     title: "Propostas no mês",
     value: "—",
-    note: "Sem dados consolidados ainda",
-    icon: <ChartNoAxesCombined size={16} />,
+    description: "Sem dados consolidados ainda",
+    footerText: "Aguardando propostas no período",
   },
   {
     title: "Taxa de conversão",
     value: "—",
-    note: "Ganhas / (Ganhas + Perdidas)",
-    icon: <TrendingUp size={16} />,
+    description: "Ganhas / (Ganhas + Perdidas)",
+    trend: "up" as const,
+    trendValue: "0%",
+    footerText: "Trending this month",
   },
   {
     title: "Valor ganho",
     value: "—",
-    note: "Aguardando propostas finalizadas",
-    icon: <Trophy size={16} />,
+    description: "Aguardando propostas finalizadas",
+    footerText: "Total de propostas ganhas",
+  },
+  {
+    title: "Performance",
+    value: "—",
+    trend: "up" as const,
+    trendValue: "—",
+    footerText: "Steady performance",
   },
 ];
 
 export default function DashboardPage() {
   return (
-    <>
-      <PageHeader
-        badge="Comercial"
-        title="Dashboard de Propostas"
-        description="Visão gerencial de conversão, valores e performance por cliente."
-        action={<Button variant="secondary">Exportar resumo</Button>}
-      />
+    <div className="flex flex-1 flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard de Propostas</h1>
+        <p className="text-muted-foreground">
+          Visão gerencial de conversão, valores e performance por cliente.
+        </p>
+      </div>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {kpis.map((kpi) => (
-          <Card key={kpi.title}>
-            <CardHeader>
-              <CardDescription className="flex items-center gap-2 text-[#0f766e]">
-                {kpi.icon}
-                {kpi.title}
-              </CardDescription>
-              <CardTitle className="text-3xl">{kpi.value}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-[#5b6d84]">{kpi.note}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+      <SectionCards cards={sectionCardsData} />
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <Card>
           <CardHeader>
             <CardTitle>Funil por status</CardTitle>
-            <CardDescription>Estrutura visual pronta para dados reais do banco.</CardDescription>
+            <CardDescription>
+              Estrutura visual pronta para dados reais do banco.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {[
@@ -69,12 +62,12 @@ export default function DashboardPage() {
             ].map(([status, count]) => (
               <div key={status as string}>
                 <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="capitalize text-[#0b1220]">{status as string}</span>
-                  <span className="font-medium text-[#42556d]">{count as number}</span>
+                  <span className="capitalize text-foreground">{status as string}</span>
+                  <span className="font-medium text-muted-foreground">{count as number}</span>
                 </div>
-                <div className="h-2 rounded-full bg-[#ecf1f7]">
+                <div className="h-2 rounded-full bg-muted">
                   <div
-                    className="h-2 rounded-full bg-[#0f766e]"
+                    className="h-2 rounded-full bg-primary"
                     style={{ width: `${Math.min(100, (count as number) * 10)}%` }}
                   />
                 </div>
@@ -89,12 +82,12 @@ export default function DashboardPage() {
             <CardDescription>Quantidade e valor total de propostas.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-lg border border-dashed border-[#c9d5e2] bg-[#f8fbff] p-4 text-sm text-[#5b6d84]">
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
               Nenhum cliente com propostas registradas ainda.
             </div>
           </CardContent>
         </Card>
-      </section>
-    </>
+      </div>
+    </div>
   );
 }

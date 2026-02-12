@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-
-import { Badge } from "@/components/ui/badge";
+import { PanelsTopLeft } from "lucide-react";
 
 interface PageHeaderProps {
   badge?: string;
@@ -11,14 +10,23 @@ interface PageHeaderProps {
 
 export function PageHeader({ badge, title, description, action }: PageHeaderProps) {
   return (
-    <header className="mb-6 rounded-2xl bg-[linear-gradient(125deg,#0f172a_0%,#134e4a_45%,#164e63_100%)] px-5 py-6 text-white sm:px-7 sm:py-7">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
-          {badge ? <Badge className="bg-white/15 text-white">{badge}</Badge> : null}
-          <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
-          <p className="max-w-2xl text-sm text-white/80 sm:text-base">{description}</p>
+    <header className="mb-5 rounded-xl border border-[#d8dce3] bg-white px-4 py-3 sm:px-5">
+      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="min-w-0">
+          <div className="mb-1 inline-flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#d8dce3] bg-[#f6f7f9] text-[#5b6d84]">
+              <PanelsTopLeft size={13} />
+            </span>
+            {badge ? (
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5b6d84]">
+                {badge}
+              </p>
+            ) : null}
+          </div>
+          <h1 className="text-xl font-semibold text-[#111214] sm:text-2xl">{title}</h1>
+          <p className="mt-0.5 max-w-3xl text-sm text-[#5b6d84]">{description}</p>
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
       </div>
     </header>
   );

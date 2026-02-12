@@ -20,10 +20,10 @@ export function NavLink({ href, icon, children }: NavLinkProps) {
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
         isActive
-          ? "bg-[#0f766e] text-white"
-          : "text-[#42556d] hover:bg-[#f5f8fb] hover:text-[#0b1220]",
+          ? "bg-[#111214] text-white"
+          : "text-[#202838] hover:bg-[#eceff4] hover:text-[#111214]",
       )}
     >
       <span className="inline-flex h-4 w-4 items-center justify-center">{icon}</span>

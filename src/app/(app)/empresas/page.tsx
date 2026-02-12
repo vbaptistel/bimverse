@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Plus } from "lucide-react";
 
 import { CompaniesCrud } from "@/components/companies/companies-crud";
@@ -7,7 +8,15 @@ import { listCompaniesAction } from "@/modules/companies/interface";
 
 export const dynamic = "force-dynamic";
 
-export default async function CompaniesPage() {
+interface CompaniesPageProps {
+  searchParams: Promise<{
+    new?: string;
+  }>;
+}
+
+export default async function CompaniesPage({ searchParams }: CompaniesPageProps) {
+  const params = await searchParams;
+  const openCreateOnLoad = params.new === "1";
   const result = await listCompaniesAction({ status: "all" });
   const initialCompanies = result.success ? result.data : [];
   const initialError = result.success ? null : result.error;
@@ -20,16 +29,18 @@ export default async function CompaniesPage() {
         description="Gerencie clientes para manter sequencial de propostas por empresa."
         action={
           <Button asChild>
-            <a href="#company-form">
+            <Link href="/empresas?new=1">
               <Plus size={14} /> Nova empresa
-            </a>
+            </Link>
           </Button>
         }
       />
 
       <CompaniesCrud
+        key={openCreateOnLoad ? "companies-crud-new" : "companies-crud-default"}
         initialCompanies={initialCompanies}
         initialError={initialError}
+        openCreateOnLoad={openCreateOnLoad}
       />
     </>
   );
