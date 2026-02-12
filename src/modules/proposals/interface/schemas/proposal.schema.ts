@@ -1,4 +1,12 @@
 import { z } from "zod";
+import { PROPOSAL_STATUSES } from "@/shared/domain/types";
+
+const LIST_PROPOSAL_STATUSES = ["all", ...PROPOSAL_STATUSES] as const;
+
+export const listProposalsSchema = z.object({
+  search: z.string().trim().max(120).optional().nullable(),
+  status: z.enum(LIST_PROPOSAL_STATUSES).default("all"),
+});
 
 export const createProposalSchema = z.object({
   companyId: z.string().uuid(),
@@ -39,3 +47,4 @@ export const updateProposalStatusSchema = z.object({
 export type CreateProposalSchema = z.infer<typeof createProposalSchema>;
 export type CreateRevisionSchema = z.infer<typeof createRevisionSchema>;
 export type UpdateProposalStatusSchema = z.infer<typeof updateProposalStatusSchema>;
+export type ListProposalsSchema = z.infer<typeof listProposalsSchema>;

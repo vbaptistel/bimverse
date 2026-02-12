@@ -9,6 +9,10 @@ import type {
 import type { Proposal } from "@/modules/proposals/domain/proposal";
 
 class FakeProposalRepository implements ProposalRepositoryPort {
+  async findMany(): Promise<Proposal[]> {
+    return [];
+  }
+
   async getCompanyById() {
     return null;
   }

@@ -1,8 +1,9 @@
-import { eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import type {
   CompanyLookup,
   CreateProposalRecordInput,
+  ListProposalsFilters,
   ProposalRepositoryPort,
   ProposalStorageContext,
   UpdateProposalStatusInput,
@@ -48,6 +49,39 @@ function toDomain(row: typeof proposals.$inferSelect): Proposal {
 
 export class DrizzleProposalRepository implements ProposalRepositoryPort {
   constructor(private readonly database: Database) {}
+
+  async findMany(filters: ListProposalsFilters = {}): Promise<Proposal[]> {
+    const conditions: SQL<unknown>[] = [];
+
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      conditions.push(
+        or(
+          ilike(proposals.code, term),
+          ilike(proposals.projectName, term),
+          ilike(proposals.invitationCode, term),
+        )!,
+      );
+    }
+
+    if (filters.status !== undefined && filters.status !== null) {
+      conditions.push(eq(proposals.status, filters.status));
+    }
+
+    const query = this.database
+      .select()
+      .from(proposals)
+      .orderBy(desc(proposals.createdAt), proposals.code);
+
+    const rows =
+      conditions.length > 0
+        ? await query.where(
+            conditions.length === 1 ? conditions[0] : and(...conditions),
+          )
+        : await query;
+
+    return rows.map(toDomain);
+  }
 
   async getCompanyById(companyId: string): Promise<CompanyLookup | null> {
     const [company] = await this.database

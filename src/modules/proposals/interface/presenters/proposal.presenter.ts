@@ -1,4 +1,5 @@
 import type { Proposal, ProposalRevision } from "@/modules/proposals/domain/proposal";
+import type { ProposalStatus } from "@/shared/domain/types";
 
 export interface ProposalPresenter {
   id: string;
@@ -7,7 +8,7 @@ export interface ProposalPresenter {
   seqNumber: number;
   year: number;
   projectName: string;
-  status: string;
+  status: ProposalStatus;
   estimatedValueBrl: number | null;
   finalValueBrl: number | null;
   createdAt: string;

@@ -1,33 +1,40 @@
+"use client";
+
 import { BriefcaseBusiness, Plus } from "lucide-react";
+import { useState } from "react";
 
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ListFiltersBar } from "@/components/shared/list-filters-bar";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function SuppliersPage() {
-  return (
-    <>
-      <section className="mb-4 rounded-xl border border-border bg-card p-4">
-        <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto]">
-          <Input placeholder="Buscar fornecedor" />
-          <Input placeholder="Especialidade" />
-          <Input placeholder="Faixa de custo/hora" />
-          <Button>
-            <Plus className="size-3.5" /> Novo fornecedor
-          </Button>
-        </div>
-      </section>
+  const [search, setSearch] = useState("");
 
+  const applyFilters = () => {
+    // TODO: integrar com listagem de fornecedores quando existir
+  };
+
+  return (
+    <div className="space-y-4">
+      <ListFiltersBar
+        tabs={[{ value: "all", label: "Todos" }]}
+        activeTab="all"
+        onTabChange={() => { }}
+        searchPlaceholder="Filtrar fornecedores..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchApply={applyFilters}
+        primaryAction={{
+          label: "Novo fornecedor",
+          onClick: () => { },
+          icon: <Plus className="size-3.5" />,
+        }}
+      />
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de fornecedores</CardTitle>
-          <CardDescription>Visão base para ordenação por especialidade e custo.</CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto gap-4 space-y-4">
           <table className="w-full min-w-[620px] text-left text-sm">
             <thead>
-              <tr className="border-b border-[#e3e9f1] text-[#5b6d84]">
+              <tr className="border-b border-border text-muted-foreground">
                 <th className="px-2 py-2">Fornecedor</th>
                 <th className="px-2 py-2">Especialidade</th>
                 <th className="px-2 py-2">Custo/hora</th>
@@ -35,8 +42,8 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-[#f0f4f9]">
-                <td className="px-2 py-5 text-[#5b6d84]" colSpan={4}>
+              <tr className="border-b border-border">
+                <td className="px-2 py-5 text-muted-foreground" colSpan={4}>
                   Nenhum fornecedor cadastrado.
                 </td>
               </tr>
@@ -52,6 +59,6 @@ export default function SuppliersPage() {
           icon={<BriefcaseBusiness size={16} />}
         />
       </div>
-    </>
+    </div>
   );
 }

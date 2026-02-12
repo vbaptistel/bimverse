@@ -9,6 +9,10 @@ import { CreateRevisionUseCase } from "@/modules/proposals/application/use-cases
 import type { Proposal, ProposalRevision } from "@/modules/proposals/domain/proposal";
 
 class FakeProposalRepository implements ProposalRepositoryPort {
+  async findMany(): Promise<Proposal[]> {
+    return [];
+  }
+
   async getCompanyById() {
     return null;
   }

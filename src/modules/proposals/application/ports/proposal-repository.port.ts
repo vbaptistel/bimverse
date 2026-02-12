@@ -13,6 +13,11 @@ export interface ProposalStorageContext {
   year: number;
 }
 
+export interface ListProposalsFilters {
+  search?: string | null;
+  status?: ProposalStatus | null;
+}
+
 export interface CreateProposalRecordInput {
   companyId: string;
   code: string;
@@ -37,6 +42,7 @@ export interface UpdateProposalStatusInput {
 
 export interface ProposalRepositoryPort {
   getCompanyById(companyId: string): Promise<CompanyLookup | null>;
+  findMany(filters?: ListProposalsFilters): Promise<Proposal[]>;
   allocateNextSequence(companyId: string, year: number): Promise<number>;
   createProposal(input: CreateProposalRecordInput): Promise<Proposal>;
   getProposalById(proposalId: string): Promise<Proposal | null>;

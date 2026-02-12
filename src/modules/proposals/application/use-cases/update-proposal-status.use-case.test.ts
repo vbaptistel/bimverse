@@ -11,6 +11,10 @@ import type { Proposal } from "@/modules/proposals/domain/proposal";
 class FakeProposalRepository implements ProposalRepositoryPort {
   constructor(private readonly status: Proposal["status"]) {}
 
+  async findMany(): Promise<Proposal[]> {
+    return [];
+  }
+
   async getCompanyById() {
     return null;
   }

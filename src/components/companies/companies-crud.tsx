@@ -1,14 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { ListFiltersBar } from "@/components/shared/list-filters-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -198,22 +199,18 @@ export function CompaniesCrud({
     });
   });
 
-  const handleApplyFilters = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const applyFilters = () => {
     setFeedback(null);
-
     startTransition(async () => {
       await refreshCompanies(search, statusFilter);
     });
   };
 
-  const handleClearFilters = () => {
-    setSearch("");
-    setStatusFilter("all");
+  const handleStatusTabChange = (value: string) => {
+    setStatusFilter(value as StatusFilter);
     setFeedback(null);
-
     startTransition(async () => {
-      await refreshCompanies("", "all");
+      await refreshCompanies(search, value as StatusFilter);
     });
   };
 
@@ -262,65 +259,7 @@ export function CompaniesCrud({
   };
 
   return (
-    <>
-      <section className="mb-4 rounded-xl border border-border bg-card p-4">
-        <form
-          className="grid gap-3 md:grid-cols-[2fr_1fr_auto_auto_auto]"
-          onSubmit={handleApplyFilters}
-        >
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-              size={14}
-            />
-            <Input
-              className="pl-9"
-              placeholder="Buscar por nome, slug ou CNPJ"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
-
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-          >
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="Todos os status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {COMPANY_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {COMPANY_STATUS_LABELS[status]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button type="submit" variant="secondary" disabled={isPending}>
-            <Filter className="size-3.5" /> Aplicar filtros
-          </Button>
-
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleClearFilters}
-            disabled={isPending}
-          >
-            Limpar
-          </Button>
-
-          <Button
-            type="button"
-            onClick={openCreateModal}
-            disabled={isPending}
-          >
-            <Plus className="size-3.5" /> Nova empresa
-          </Button>
-        </form>
-      </section>
-
+    <div className="space-y-4">
       <Dialog
         open={isFormModalOpen}
         onOpenChange={(open) => {
@@ -455,17 +394,35 @@ export function CompaniesCrud({
         </DialogContent>
       </Dialog>
 
+      <ListFiltersBar
+        tabs={[
+          { value: "all", label: "Todas as empresas" },
+          ...COMPANY_STATUSES.map((status) => ({
+            value: status,
+            label: COMPANY_STATUS_LABELS[status],
+          })),
+        ]}
+        activeTab={statusFilter}
+        onTabChange={handleStatusTabChange}
+        searchPlaceholder="Filtrar empresas..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchApply={applyFilters}
+        primaryAction={{
+          label: "Nova empresa",
+          onClick: openCreateModal,
+          icon: <Plus className="size-3.5" />,
+          disabled: isPending,
+        }}
+      />
+
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de empresas</CardTitle>
-          <CardDescription>
-            Empresas disponíveis para criação de propostas e controle comercial.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto gap-4 space-y-4">
+
+
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
-              <tr className="border-b border-[#e3e9f1] text-[#5b6d84]">
+              <tr className="border-b border-border text-muted-foreground">
                 <th className="px-2 py-2">Empresa</th>
                 <th className="px-2 py-2">Slug</th>
                 <th className="px-2 py-2">CNPJ</th>
@@ -476,26 +433,26 @@ export function CompaniesCrud({
             </thead>
             <tbody>
               {companies.length === 0 ? (
-                <tr className="border-b border-[#f0f4f9]">
-                  <td className="px-2 py-5 text-[#5b6d84]" colSpan={6}>
+                <tr className="border-b border-border">
+                  <td className="px-2 py-5 text-muted-foreground" colSpan={6}>
                     Nenhuma empresa cadastrada.
                   </td>
                 </tr>
               ) : (
                 companies.map((company) => (
-                  <tr key={company.id} className="border-b border-[#f0f4f9]">
+                  <tr key={company.id} className="border-b border-border">
                     <td className="px-2 py-3">
-                      <p className="font-medium text-[#0b1220]">{company.name}</p>
+                      <p className="font-medium text-foreground">{company.name}</p>
                       {company.notes ? (
-                        <p className="mt-1 line-clamp-1 text-xs text-[#5b6d84]">
+                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                           {company.notes}
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-2 py-3 font-mono text-xs text-[#42556d]">
+                    <td className="px-2 py-3 font-mono text-xs text-muted-foreground">
                       {company.slug}
                     </td>
-                    <td className="px-2 py-3 text-[#42556d]">
+                    <td className="px-2 py-3 text-muted-foreground">
                       {company.cnpj ? formatCnpj(company.cnpj) : "—"}
                     </td>
                     <td className="px-2 py-3">
@@ -503,10 +460,10 @@ export function CompaniesCrud({
                         {COMPANY_STATUS_LABELS[company.status]}
                       </Badge>
                     </td>
-                    <td className="px-2 py-3 text-xs text-[#5b6d84]">
+                    <td className="px-2 py-3 text-xs text-muted-foreground">
                       {dateFormatter.format(new Date(company.createdAt))}
                     </td>
-                    <td className="px-2 py-3 w-[100px]">
+                    <td className="px-2 py-3 w-[5%]">
                       <div className="flex justify-end gap-2">
                         <Button
                           type="button"
@@ -516,7 +473,6 @@ export function CompaniesCrud({
                           disabled={isPending}
                         >
                           <Pencil size={13} />
-                          Editar
                         </Button>
                         <Button
                           type="button"
@@ -526,7 +482,6 @@ export function CompaniesCrud({
                           disabled={isPending}
                         >
                           <Trash2 size={13} />
-                          Excluir
                         </Button>
                       </div>
                     </td>
@@ -539,10 +494,10 @@ export function CompaniesCrud({
       </Card>
 
       {feedback ? (
-        <p className="mt-4 rounded-md bg-[#f5f8fb] px-3 py-2 text-sm text-[#12304a]">
+        <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-foreground">
           {feedback}
         </p>
       ) : null}
-    </>
+    </div>
   );
 }
