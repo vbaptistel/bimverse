@@ -17,6 +17,38 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "application/zip",
+  "application/acad",
+  "application/x-acad",
+  "application/x-autocad",
+  "image/vnd.dwg",
+  "application/dxf",
+  "application/x-dxf",
+  "image/vnd.dxf",
+  "model/ifc",
+]);
+
+const ALLOWED_FILE_EXTENSIONS = new Set([
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "png",
+  "jpg",
+  "jpeg",
+  "zip",
+  "dwg",
+  "dxf",
+  "rvt",
+  "rfa",
+  "rte",
+  "rft",
+  "ifc",
+  "ifczip",
+  "nwc",
+  "nwd",
+  "bcf",
+  "bcfzip",
 ]);
 
 interface CreateAttachmentUploadInput {
@@ -51,7 +83,13 @@ export class CreateAttachmentUploadUseCase
       );
     }
 
-    if (!ALLOWED_MIME_TYPES.has(input.mimeType)) {
+    const normalizedMimeType = input.mimeType.trim().toLowerCase();
+    const fileExtension = input.fileName.split(".").pop()?.toLowerCase() ?? "";
+    const isMimeTypeAllowed =
+      normalizedMimeType.length > 0 && ALLOWED_MIME_TYPES.has(normalizedMimeType);
+    const isFileExtensionAllowed = ALLOWED_FILE_EXTENSIONS.has(fileExtension);
+
+    if (!isMimeTypeAllowed && !isFileExtensionAllowed) {
       throw new ValidationError("Tipo de arquivo não suportado");
     }
 

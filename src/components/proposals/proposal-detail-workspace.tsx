@@ -2237,7 +2237,12 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
             <div className="grid gap-2">
               <Label htmlFor="attachmentModalFile">Arquivo</Label>
-              <Input id="attachmentModalFile" type="file" disabled={isPending} />
+              <Input
+                id="attachmentModalFile"
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.dwg,.dxf,.rvt,.rfa,.rte,.rft,.ifc,.ifczip,.nwc,.nwd,.bcf,.bcfzip"
+                disabled={isPending}
+              />
             </div>
 
             <DialogFooter>

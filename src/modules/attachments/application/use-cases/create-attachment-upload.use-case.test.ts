@@ -126,4 +126,38 @@ describe("CreateAttachmentUploadUseCase", () => {
       }),
     ).rejects.toThrow("Use o fluxo de envio da proposta para arquivo principal");
   });
+
+  it("aceita arquivo CAD/BIM por extensao mesmo sem mime type", async () => {
+    const useCase = new CreateAttachmentUploadUseCase(
+      new FakeProposalRepository(),
+      new FakeStoragePort(),
+    );
+
+    const output = await useCase.execute({
+      proposalId: "proposal-1",
+      category: "tr",
+      fileName: "modelo-projeto.rvt",
+      fileSizeBytes: 1024,
+      mimeType: "",
+    });
+
+    expect(output.path).toContain("modelo-projeto.rvt");
+  });
+
+  it("rejeita arquivo fora da lista permitida", async () => {
+    const useCase = new CreateAttachmentUploadUseCase(
+      new FakeProposalRepository(),
+      new FakeStoragePort(),
+    );
+
+    await expect(
+      useCase.execute({
+        proposalId: "proposal-1",
+        category: "tr",
+        fileName: "script.exe",
+        fileSizeBytes: 1024,
+        mimeType: "application/x-msdownload",
+      }),
+    ).rejects.toThrow("Tipo de arquivo não suportado");
+  });
 });
