@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -32,12 +33,12 @@ const highlights: Array<{
 }> = [
     {
       title: "Pipeline centralizado",
-      description: "Acompanhe propostas, revisoes e etapas comerciais em um unico lugar.",
+      description: "Acompanhe propostas, revisões e etapas comerciais em um único lugar.",
       icon: LayoutGrid,
     },
     {
-      title: "Historico rastreavel",
-      description: "Cada mudanca fica registrada para facilitar auditoria e alinhamento da equipe.",
+      title: "Histórico rastreável",
+      description: "Cada mudança fica registrada para facilitar auditoria e alinhamento da equipe.",
       icon: ShieldCheck,
     },
   ];
@@ -54,14 +55,14 @@ function toFriendlyAuthError(message: string): string {
   const normalized = message.toLowerCase();
 
   if (normalized.includes("invalid login credentials")) {
-    return "Credenciais invalidas. Confira e-mail e senha.";
+    return "Credenciais inválidas. Confira e-mail e senha.";
   }
 
   if (normalized.includes("email not confirmed")) {
-    return "Seu e-mail ainda nao foi confirmado.";
+    return "Seu e-mail ainda não foi confirmado.";
   }
 
-  return "Nao foi possivel autenticar agora. Tente novamente.";
+  return "Não foi possível autenticar agora. Tente novamente.";
 }
 
 function LoginContent() {
@@ -121,12 +122,19 @@ function LoginContent() {
           <div className="pointer-events-none absolute -bottom-20 right-[-3rem] size-80 rounded-full bg-cyan-200/20 blur-2xl" />
 
           <div className="relative animate-in fade-in-0 slide-in-from-left-5 duration-700">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-100">Bimverse Comercial</p>
+            <Image
+              src="/logo-white.png"
+              alt="bimverse - Projetamos conexões, construímos soluções"
+              width={160}
+              height={48}
+              className="h-8 w-auto object-contain"
+              priority
+            />
             <h2 className="mt-6 max-w-md font-[family-name:var(--font-sora)] text-5xl font-semibold leading-[1.05]">
-              Gestao inteligente de propostas BIM
+              Gestão inteligente de propostas
             </h2>
             <p className="mt-5 max-w-md text-lg text-cyan-50/95">
-              Plataforma unica para conduzir propostas com previsibilidade e foco em conversao.
+              Plataforma única para conduzir propostas com previsibilidade e foco em conversão.
             </p>
           </div>
 
@@ -159,12 +167,12 @@ function LoginContent() {
 
           <div className="relative w-full max-w-md space-y-7 animate-in fade-in-0 slide-in-from-right-4 duration-700">
             <div className="rounded-2xl border border-teal-100 bg-white/90 p-4 text-sm text-slate-600 lg:hidden">
-              Acesso unico para toda a equipe comercial. Entre com seu e-mail corporativo.
+              Acesso único para toda a equipe comercial. Entre com seu e-mail corporativo.
             </div>
 
             <header className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-                Login corporativo
+                Login
               </p>
               <h1 className="font-[family-name:var(--font-sora)] text-3xl font-semibold text-slate-900 sm:text-4xl">
                 Bem-vindo de volta
@@ -177,7 +185,7 @@ function LoginContent() {
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-700">
-                  E-mail corporativo
+                  E-mail
                 </Label>
                 <InputGroup className="h-11 rounded-xl border-slate-200 bg-white">
                   <InputGroupAddon>
@@ -245,21 +253,10 @@ function LoginContent() {
                 disabled={isSubmitting || !email.trim() || !password}
                 className="h-11 w-full rounded-xl bg-teal-700 text-base font-semibold text-white hover:bg-teal-600"
               >
-                {isSubmitting ? "Entrando..." : "Entrar no sistema"}
+                {isSubmitting ? "Entrando..." : "Entrar"}
                 <ArrowRight className="size-4" aria-hidden />
               </Button>
             </form>
-
-            <p className="text-xs text-slate-500">
-              Precisa de ajuda? Entre em contato com o TI pelo e-mail{" "}
-              <a
-                className="font-semibold text-teal-700 hover:text-teal-600"
-                href="mailto:ti@bimverse.com"
-              >
-                ti@bimverse.com
-              </a>
-              .
-            </p>
           </div>
         </section>
       </div>
