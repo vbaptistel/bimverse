@@ -142,6 +142,7 @@ export interface SupplierOptionPresenter {
   id: string;
   legalName: string;
   specialty: string;
+  hourlyCostBrl: number | null;
   active: boolean;
 }
 
@@ -150,6 +151,7 @@ function presentSupplierOption(supplier: Supplier): SupplierOptionPresenter {
     id: supplier.id,
     legalName: supplier.legalName,
     specialty: supplier.specialty,
+    hourlyCostBrl: supplier.hourlyCostBrl,
     active: supplier.active,
   };
 }

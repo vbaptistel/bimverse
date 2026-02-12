@@ -59,11 +59,10 @@ export class LinkProposalSupplierUseCase
     const alreadyLinked = await this.proposalSupplierRepository.existsLink(
       input.proposalId,
       input.supplierId,
-      input.revisionId,
     );
 
     if (alreadyLinked) {
-      throw new ValidationError("Fornecedor já vinculado neste contexto");
+      throw new ValidationError("Fornecedor já vinculado nesta proposta");
     }
 
     const link = await this.proposalSupplierRepository.createLink({

@@ -21,20 +21,24 @@ import {
   SidebarRail
 } from "@/components/ui/sidebar";
 
-const navMain: { title: string; url: string; icon: LucideIcon }[] = [
+const navMain: { title: string; url: string; icon: LucideIcon; }[] = [
   { title: "Dashboard", url: "/dashboard", icon: Gauge },
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Propostas", url: "/propostas", icon: FileSpreadsheet },
   { title: "Fornecedores", url: "/fornecedores", icon: BriefcaseBusiness },
 ];
 
-const user = {
-  name: "vinicius",
-  email: "v@bimverse.com",
-  avatar: "",
-};
+interface AppSidebarUser {
+  name: string;
+  email: string;
+  avatar?: string;
+}
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  user: AppSidebarUser;
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader className="rounded-lg p-2">

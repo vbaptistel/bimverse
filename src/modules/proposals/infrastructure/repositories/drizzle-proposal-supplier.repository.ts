@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import type {
   CreateProposalSupplierLinkInput,
@@ -115,28 +115,16 @@ export class DrizzleProposalSupplierRepository
     return rows.map(toDomain);
   }
 
-  async existsLink(
-    proposalId: string,
-    supplierId: string,
-    revisionId?: string | null,
-  ): Promise<boolean> {
-    const condition =
-      revisionId === undefined || revisionId === null
-        ? and(
-            eq(proposalSuppliers.proposalId, proposalId),
-            eq(proposalSuppliers.supplierId, supplierId),
-            isNull(proposalSuppliers.revisionId),
-          )
-        : and(
-            eq(proposalSuppliers.proposalId, proposalId),
-            eq(proposalSuppliers.supplierId, supplierId),
-            eq(proposalSuppliers.revisionId, revisionId),
-          );
-
+  async existsLink(proposalId: string, supplierId: string): Promise<boolean> {
     const [existing] = await this.database
       .select({ id: proposalSuppliers.id })
       .from(proposalSuppliers)
-      .where(condition)
+      .where(
+        and(
+          eq(proposalSuppliers.proposalId, proposalId),
+          eq(proposalSuppliers.supplierId, supplierId),
+        ),
+      )
       .limit(1);
 
     return Boolean(existing);

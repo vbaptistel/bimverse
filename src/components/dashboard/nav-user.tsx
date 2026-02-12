@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  CreditCard,
-  HelpCircle,
-  LogOut,
-  Settings,
+  LogOut
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import {
   Avatar,
@@ -15,30 +15,51 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { createSupabaseBrowserClient } from "@/shared/infrastructure/supabase/browser-client";
 
 export function NavUser({
   user,
 }: {
-  user: { name: string; email: string; avatar?: string };
+  user: { name: string; email: string; avatar?: string; };
 }) {
+  const router = useRouter();
   const { isMobile } = useSidebar();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  async function handleSignOut() {
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) {
+        throw error;
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      toast.error("Nao foi possivel sair agora. Tente novamente.");
+      setIsSigningOut(false);
+    }
+  }
 
   return (
     <SidebarMenuItem>
@@ -77,24 +98,15 @@ export function NavUser({
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Settings className="size-4" />
-              Account
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CreditCard className="size-4" />
-              Billing
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <HelpCircle className="size-4" />
-            Ajuda
-          </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={isSigningOut}
+            onSelect={(event) => {
+              event.preventDefault();
+              void handleSignOut();
+            }}
+          >
             <LogOut className="size-4" />
-            Sair
+            {isSigningOut ? "Saindo..." : "Sair"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

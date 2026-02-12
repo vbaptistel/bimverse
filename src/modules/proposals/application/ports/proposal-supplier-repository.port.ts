@@ -26,11 +26,7 @@ export interface CreateProposalSupplierLinkInput {
 export interface ProposalSupplierRepositoryPort {
   findById(linkId: string): Promise<ProposalSupplierLink | null>;
   findManyByProposalId(proposalId: string): Promise<ProposalSupplierLink[]>;
-  existsLink(
-    proposalId: string,
-    supplierId: string,
-    revisionId?: string | null,
-  ): Promise<boolean>;
+  existsLink(proposalId: string, supplierId: string): Promise<boolean>;
   createLink(input: CreateProposalSupplierLinkInput): Promise<ProposalSupplierLink>;
   deleteById(linkId: string): Promise<void>;
 }

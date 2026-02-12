@@ -317,6 +317,70 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const selectedStatusInModal = statusForm.watch("status");
   const statusRequiresReasonInModal =
     selectedStatusInModal === "perdida" || selectedStatusInModal === "cancelada";
+  const selectedSupplierId = supplierLinkForm.watch("supplierId");
+  const selectedSupplierHourlyCost = supplierLinkForm.watch("quotedHourlyCostBrl");
+  const selectedSupplierEstimatedHours = supplierLinkForm.watch("estimatedHours");
+  const selectedSupplierQuotedTotal = supplierLinkForm.watch("quotedTotalBrl");
+
+  const supplierOptionsById = useMemo(
+    () => new Map(detail.supplierOptions.map((supplier) => [supplier.id, supplier])),
+    [detail.supplierOptions],
+  );
+  const linkedSupplierIds = useMemo(
+    () => new Set(detail.supplierLinks.map((link) => link.supplierId)),
+    [detail.supplierLinks],
+  );
+  const suppliersQuotedTotalBrl = useMemo(
+    () =>
+      Number(
+        detail.supplierLinks
+          .reduce((sum, link) => sum + (link.quotedTotalBrl ?? 0), 0)
+          .toFixed(2),
+      ),
+    [detail.supplierLinks],
+  );
+
+  useEffect(() => {
+    if (!selectedSupplierId) {
+      supplierLinkForm.setValue("roleDescription", null, { shouldDirty: false });
+      supplierLinkForm.setValue("quotedHourlyCostBrl", null, { shouldDirty: false });
+      return;
+    }
+
+    const supplier = supplierOptionsById.get(selectedSupplierId);
+    if (!supplier) {
+      return;
+    }
+
+    supplierLinkForm.setValue("roleDescription", toNullableText(supplier.specialty), {
+      shouldDirty: false,
+    });
+    supplierLinkForm.setValue("quotedHourlyCostBrl", supplier.hourlyCostBrl ?? null, {
+      shouldDirty: false,
+    });
+  }, [selectedSupplierId, supplierLinkForm, supplierOptionsById]);
+
+  useEffect(() => {
+    if (
+      selectedSupplierHourlyCost === null ||
+      selectedSupplierHourlyCost === undefined ||
+      selectedSupplierEstimatedHours === null ||
+      selectedSupplierEstimatedHours === undefined
+    ) {
+      supplierLinkForm.setValue("quotedTotalBrl", null, {
+        shouldDirty: false,
+      });
+      return;
+    }
+
+    const quotedTotal = Number(
+      (selectedSupplierHourlyCost * selectedSupplierEstimatedHours).toFixed(2),
+    );
+
+    supplierLinkForm.setValue("quotedTotalBrl", quotedTotal, {
+      shouldDirty: false,
+    });
+  }, [selectedSupplierHourlyCost, selectedSupplierEstimatedHours, supplierLinkForm]);
 
   const handleBaseSave = baseForm.handleSubmit((values) => {
     const criticalFieldsChanged =
@@ -621,6 +685,14 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
   const handleLinkSupplier = supplierLinkForm.handleSubmit((values) => {
     startTransition(async () => {
+      const calculatedQuotedTotal =
+        values.quotedHourlyCostBrl !== null &&
+          values.quotedHourlyCostBrl !== undefined &&
+          values.estimatedHours !== null &&
+          values.estimatedHours !== undefined
+          ? Number((values.quotedHourlyCostBrl * values.estimatedHours).toFixed(2))
+          : null;
+
       const result = await linkProposalSupplierAction({
         proposalId: detail.proposal.id,
         supplierId: values.supplierId,
@@ -628,7 +700,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         roleDescription: toNullableText(values.roleDescription),
         quotedHourlyCostBrl: values.quotedHourlyCostBrl ?? null,
         estimatedHours: values.estimatedHours ?? null,
-        quotedTotalBrl: values.quotedTotalBrl ?? null,
+        quotedTotalBrl: values.quotedTotalBrl ?? calculatedQuotedTotal,
       });
 
       if (!result.success) {
@@ -1008,7 +1080,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         </Card>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section>
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -1034,6 +1106,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     <th className="px-2 py-2">Arquivo</th>
                     <th className="px-2 py-2">Revisão</th>
                     <th className="px-2 py-2">Tamanho</th>
+                    <th className="px-2 py-2">Enviado em</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -1056,6 +1129,9 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                         <td className="px-2 py-3 text-muted-foreground">
                           {formatBytes(attachment.fileSizeBytes)}
                         </td>
+                        <td className="px-2 py-3 text-muted-foreground">
+                          {dateTimeFormatter.format(new Date(attachment.createdAt))}
+                        </td>
                         <td className="px-2 py-3 text-right">
                           <Button
                             type="button"
@@ -1076,7 +1152,9 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             </div>
           </CardContent>
         </Card>
+      </section>
 
+      <section>
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -1097,6 +1175,12 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             </Button>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 rounded-md border border-border bg-muted/30 px-4 py-3">
+              <p className="text-xs text-muted-foreground">Custo total cotado</p>
+              <p className="text-xl font-semibold text-foreground">
+                {formatCurrencyBrl(suppliersQuotedTotalBrl)}
+              </p>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[780px] text-left text-sm">
                 <thead>
@@ -1106,7 +1190,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     <th className="px-2 py-2">Revisão</th>
                     <th className="px-2 py-2">Papel</th>
                     <th className="px-2 py-2">Total cotado</th>
-                    <th className="px-2 py-2 text-right">Ações</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1450,8 +1534,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     </SelectTrigger>
                     <SelectContent>
                       {detail.supplierOptions.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
+                        <SelectItem
+                          key={supplier.id}
+                          value={supplier.id}
+                          disabled={linkedSupplierIds.has(supplier.id)}
+                        >
                           {supplier.legalName} ({supplier.specialty})
+                          {linkedSupplierIds.has(supplier.id) ? " - já vinculado" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1490,7 +1579,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               <Label htmlFor="supplierRoleDescription">Papel (opcional)</Label>
               <Input
                 id="supplierRoleDescription"
-                disabled={isPending}
+                disabled={isPending || !selectedSupplierId}
                 {...supplierLinkForm.register("roleDescription", {
                   setValueAs: (value) => toNullableText(value),
                 })}
@@ -1498,7 +1587,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="supplierQuotedHourlyCost">Custo/hora cotado</Label>
+              <Label htmlFor="supplierQuotedHourlyCost">Custo por hora</Label>
               <Controller
                 name="quotedHourlyCostBrl"
                 control={supplierLinkForm.control}
@@ -1507,7 +1596,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     id="supplierQuotedHourlyCost"
                     type="text"
                     inputMode="numeric"
-                    disabled={isPending}
+                    disabled={isPending || !selectedSupplierId}
                     value={
                       field.value === null || field.value === undefined
                         ? ""
@@ -1528,51 +1617,40 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 id="supplierEstimatedHours"
                 type="number"
                 step="0.01"
-                disabled={isPending}
+                disabled={isPending || !selectedSupplierId}
                 {...supplierLinkForm.register("estimatedHours", {
                   setValueAs: (value) => toNullableNumber(value),
                 })}
               />
             </div>
 
-            <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="supplierQuotedTotal">Total cotado</Label>
-              <Controller
-                name="quotedTotalBrl"
-                control={supplierLinkForm.control}
-                render={({ field }) => (
-                  <Input
-                    id="supplierQuotedTotal"
-                    type="text"
-                    inputMode="numeric"
-                    disabled={isPending}
-                    value={
-                      field.value === null || field.value === undefined
-                        ? ""
-                        : formatCurrencyBrl(field.value)
-                    }
-                    onBlur={field.onBlur}
-                    onChange={(event) =>
-                      field.onChange(parseCurrencyBrlInput(event.target.value))
-                    }
-                  />
-                )}
-              />
-            </div>
 
             <DialogFooter className="sm:col-span-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={closeSupplierModal}
-                disabled={isPending}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? <Loader2 className="animate-spin" /> : <Link2 />}
-                Vincular fornecedor
-              </Button>
+              <div className="flex gap-2 flex-row justify-between items-end w-full">
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">Custo Total: </p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {selectedSupplierId && selectedSupplierQuotedTotal !== null
+                      ? formatCurrencyBrl(selectedSupplierQuotedTotal)
+                      : "R$ 0,00"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={closeSupplierModal}
+                    disabled={isPending}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? <Loader2 className="animate-spin" /> : <Link2 />}
+                    Vincular fornecedor
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

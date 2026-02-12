@@ -33,6 +33,7 @@ import {
 } from "@/modules/suppliers/interface";
 import { formatCnpj } from "@/shared/domain/cnpj";
 import { formatCurrencyBrl, parseCurrencyBrlInput } from "@/shared/domain/currency";
+import { formatPhone } from "@/shared/domain/phone";
 
 interface SuppliersCrudProps {
   initialSuppliers: SupplierPresenter[];
@@ -66,17 +67,21 @@ function getContactLines(supplier: SupplierPresenter): {
   primary: string;
   secondary: string | null;
 } {
+  const formattedPhone = supplier.contactPhone
+    ? formatPhone(supplier.contactPhone) || supplier.contactPhone
+    : null;
+
   if (supplier.contactName) {
     return {
       primary: supplier.contactName,
-      secondary: supplier.contactEmail ?? supplier.contactPhone ?? null,
+      secondary: supplier.contactEmail ?? formattedPhone,
     };
   }
 
-  if (supplier.contactEmail && supplier.contactPhone) {
+  if (supplier.contactEmail && formattedPhone) {
     return {
       primary: supplier.contactEmail,
-      secondary: supplier.contactPhone,
+      secondary: formattedPhone,
     };
   }
 
@@ -87,9 +92,9 @@ function getContactLines(supplier: SupplierPresenter): {
     };
   }
 
-  if (supplier.contactPhone) {
+  if (formattedPhone) {
     return {
-      primary: supplier.contactPhone,
+      primary: formattedPhone,
       secondary: null,
     };
   }
@@ -242,7 +247,7 @@ export function SuppliersCrud({
       hourlyCostBrl: supplier.hourlyCostBrl,
       contactName: supplier.contactName,
       contactEmail: supplier.contactEmail,
-      contactPhone: supplier.contactPhone,
+      contactPhone: formatPhone(supplier.contactPhone),
       active: supplier.active,
     });
     setIsFormModalOpen(true);
@@ -382,12 +387,22 @@ export function SuppliersCrud({
 
               <div className="grid gap-2">
                 <Label htmlFor="contactPhone">Telefone</Label>
-                <Input
-                  id="contactPhone"
-                  placeholder="(00) 00000-0000"
-                  {...form.register("contactPhone", {
-                    setValueAs: (value) => toNullableText(value),
-                  })}
+                <Controller
+                  name="contactPhone"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Input
+                      id="contactPhone"
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      value={field.value ?? ""}
+                      onBlur={field.onBlur}
+                      onChange={(event) => {
+                        const maskedValue = formatPhone(event.target.value);
+                        field.onChange(maskedValue.length > 0 ? maskedValue : null);
+                      }}
+                    />
+                  )}
                 />
                 {form.formState.errors.contactPhone ? (
                   <p className="text-xs text-destructive">
