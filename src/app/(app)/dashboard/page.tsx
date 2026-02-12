@@ -1,9 +1,9 @@
+import { SectionCards } from "@/components/dashboard/section-cards";
+import { StatusPieChart } from "@/components/dashboard/status-pie-chart";
 import {
   ValueOverTimeAreaChart,
   type ValueOverTimeSeries,
 } from "@/components/dashboard/value-over-time-area-chart";
-import { SectionCards } from "@/components/dashboard/section-cards";
-import { StatusPieChart } from "@/components/dashboard/status-pie-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardSummaryAction } from "@/modules/dashboard/interface";
 import { formatCurrencyBrl } from "@/shared/domain/currency";
@@ -11,7 +11,7 @@ import { PROPOSAL_STATUSES, type ProposalStatus } from "@/shared/domain/types";
 
 type DashboardSummary = Extract<
   Awaited<ReturnType<typeof getDashboardSummaryAction>>,
-  { success: true }
+  { success: true; }
 >["data"];
 
 const percentFormatter = new Intl.NumberFormat("pt-BR", {
@@ -149,7 +149,7 @@ function buildStatusValueSeries(summary: DashboardSummary | null): ValueOverTime
 function buildCustomerValueSeries(summary: DashboardSummary | null): ValueOverTimeSeries {
   const rows = summary?.valueTimelineByCustomer ?? [];
   const monthKeys = buildContinuousMonthKeys(rows.map((row) => row.month));
-  const totalsByCustomer = new Map<string, { name: string; totalValueBrl: number }>();
+  const totalsByCustomer = new Map<string, { name: string; totalValueBrl: number; }>();
 
   for (const row of rows) {
     const current = totalsByCustomer.get(row.customerId);
@@ -355,28 +355,24 @@ export default async function DashboardPage() {
                   <thead>
                     <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="px-2 py-2 font-medium">Cliente</th>
-                      <th className="px-2 py-2 font-medium">Propostas</th>
-                      <th className="px-2 py-2 font-medium">Valor estimado</th>
-                      <th className="px-2 py-2 font-medium">Valor ganho</th>
-                      <th className="px-2 py-2 font-medium">Conversão</th>
+                      <th className="px-2 py-2 font-medium text-right">Valor estimado</th>
+                      <th className="px-2 py-2 font-medium text-right">Valor ganho</th>
+                      <th className="px-2 py-2 font-medium text-right">Conversão</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rankedCustomers.map((customer) => (
                       <tr key={customer.customerId} className="border-b border-border/70">
                         <td className="px-2 py-2 font-medium text-foreground">
-                          {customer.customerName}
+                          {customer.customerName} ({customer.proposalCount})
                         </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {customer.proposalCount}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
+                        <td className="px-2 py-2 text-muted-foreground text-right">
                           {formatCurrencyBrl(customer.totalEstimatedValueBrl)}
                         </td>
-                        <td className="px-2 py-2 text-muted-foreground">
+                        <td className="px-2 py-2 text-muted-foreground text-right">
                           {formatCurrencyBrl(customer.wonValueTotalBrl)}
                         </td>
-                        <td className="px-2 py-2 text-muted-foreground">
+                        <td className="px-2 py-2 text-muted-foreground text-right">
                           {percentFormatter.format(customer.conversionRate)}
                         </td>
                       </tr>
