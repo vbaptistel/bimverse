@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { CreateProposalForm } from "@/components/proposals/create-proposal-form";
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -25,6 +26,16 @@ const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
   ganha: "Ganha",
   perdida: "Perdida",
   cancelada: "Cancelada",
+};
+
+const PROPOSAL_STATUS_BADGE_CLASSNAMES: Record<ProposalStatus, string> = {
+  recebida: "border-slate-300 bg-slate-100 text-slate-900",
+  em_elaboracao: "border-amber-300 bg-amber-100 text-amber-900",
+  enviada: "border-blue-300 bg-blue-100 text-blue-900",
+  em_revisao: "border-cyan-300 bg-cyan-100 text-cyan-900",
+  ganha: "border-emerald-300 bg-emerald-100 text-emerald-900",
+  perdida: "border-rose-300 bg-rose-100 text-rose-900",
+  cancelada: "border-zinc-300 bg-zinc-100 text-zinc-900",
 };
 
 type StatusFilter = "all" | ProposalStatus;
@@ -101,12 +112,27 @@ export default function ProposalsPage() {
       {
         accessorKey: "projectName",
         header: ({ column }) => <SortableHeader column={column} label="Projeto" />,
+        cell: ({ row }) => (
+          <span
+            className="block max-w-[34rem] truncate"
+            title={row.original.projectName}
+          >
+            {row.original.projectName}
+          </span>
+        ),
       },
       {
         accessorKey: "status",
         accessorFn: (row) => PROPOSAL_STATUS_LABELS[row.status],
         header: ({ column }) => <SortableHeader column={column} label="Status" />,
-        cell: ({ row }) => PROPOSAL_STATUS_LABELS[row.original.status],
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={PROPOSAL_STATUS_BADGE_CLASSNAMES[row.original.status]}
+          >
+            {PROPOSAL_STATUS_LABELS[row.original.status]}
+          </Badge>
+        ),
       },
       {
         id: "dueDate",
