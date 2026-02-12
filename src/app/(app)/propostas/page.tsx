@@ -52,28 +52,42 @@ function toNullableText(value?: string | null): string | null {
 function SortableHeader<TData>({
   column,
   label,
+  align = "left",
 }: {
   column: Column<TData, unknown>;
   label: string;
+  align?: "left" | "center" | "right";
 }) {
   const sortDirection = column.getIsSorted();
+  const isCentered = align === "center";
+  const isRightAligned = align === "right";
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      className="-ml-2 h-8 px-2"
-      onClick={() => column.toggleSorting(sortDirection === "asc")}
+    <div
+      className={
+        isCentered
+          ? "flex w-full justify-center"
+          : isRightAligned
+            ? "flex w-full justify-end"
+            : ""
+      }
     >
-      {label}
-      {sortDirection === "asc" ? (
-        <ArrowUp className="size-4" />
-      ) : sortDirection === "desc" ? (
-        <ArrowDown className="size-4" />
-      ) : (
-        <ArrowUpDown className="size-4" />
-      )}
-    </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className={isCentered || isRightAligned ? "h-8 px-2" : "-ml-2 h-8 px-2"}
+        onClick={() => column.toggleSorting(sortDirection === "asc")}
+      >
+        {label}
+        {sortDirection === "asc" ? (
+          <ArrowUp className="size-4" />
+        ) : sortDirection === "desc" ? (
+          <ArrowDown className="size-4" />
+        ) : (
+          <ArrowUpDown className="size-4" />
+        )}
+      </Button>
+    </div>
   );
 }
 
@@ -135,6 +149,36 @@ export default function ProposalsPage() {
         ),
       },
       {
+        id: "currentRevision",
+        accessorFn: (row) => row.currentRevisionNumber,
+        header: ({ column }) => (
+          <SortableHeader column={column} label="Revisão atual" align="center" />
+        ),
+        sortingFn: (rowA, rowB, columnId) => {
+          const a = rowA.getValue<number | null>(columnId);
+          const b = rowB.getValue<number | null>(columnId);
+
+          if (a === null && b === null) {
+            return 0;
+          }
+          if (a === null) {
+            return 1;
+          }
+          if (b === null) {
+            return -1;
+          }
+
+          return a - b;
+        },
+        cell: ({ row }) => (
+          <span className="block text-center">
+            {row.original.currentRevisionNumber !== null
+              ? `R${row.original.currentRevisionNumber}`
+              : "—"}
+          </span>
+        ),
+      },
+      {
         id: "dueDate",
         accessorFn: (row) => row.dueDate,
         header: ({ column }) => <SortableHeader column={column} label="Prazo" />,
@@ -162,7 +206,9 @@ export default function ProposalsPage() {
       {
         id: "value",
         accessorFn: (row) => row.finalValueBrl ?? row.estimatedValueBrl,
-        header: ({ column }) => <SortableHeader column={column} label="Valor" />,
+        header: ({ column }) => (
+          <SortableHeader column={column} label="Valor" align="right" />
+        ),
         sortingFn: (rowA, rowB, columnId) => {
           const a = rowA.getValue<number | null>(columnId);
           const b = rowB.getValue<number | null>(columnId);
@@ -181,7 +227,11 @@ export default function ProposalsPage() {
         },
         cell: ({ row }) => {
           const value = row.original.finalValueBrl ?? row.original.estimatedValueBrl;
-          return <span className="text-muted-foreground">{value !== null ? formatCurrencyBrl(value) : "—"}</span>;
+          return (
+            <span className="block text-right text-muted-foreground">
+              {value !== null ? formatCurrencyBrl(value) : "—"}
+            </span>
+          );
         },
       },
       {

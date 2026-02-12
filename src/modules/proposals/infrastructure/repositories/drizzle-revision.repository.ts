@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import type {
   CreateRevisionRecordInput,
   RevisionRepositoryPort,
+  UpdateRevisionRecordInput,
 } from "@/modules/proposals/application/ports/revision-repository.port";
 import type { ProposalRevision } from "@/modules/proposals/domain/proposal";
 import { proposalRevisions } from "@/shared/infrastructure/db/schema";
@@ -99,5 +100,37 @@ export class DrizzleRevisionRepository implements RevisionRepositoryPort {
     }
 
     return toDomain(revision);
+  }
+
+  async updateRevision(input: UpdateRevisionRecordInput): Promise<ProposalRevision> {
+    const [revision] = await this.database
+      .update(proposalRevisions)
+      .set({
+        reason: input.reason ?? null,
+        scopeChanges: input.scopeChanges ?? null,
+        discountBrl:
+          input.discountBrl != null ? String(input.discountBrl) : null,
+        discountPercent:
+          input.discountPercent != null ? String(input.discountPercent) : null,
+        valueBeforeBrl:
+          input.valueBeforeBrl != null ? String(input.valueBeforeBrl) : null,
+        valueAfterBrl:
+          input.valueAfterBrl != null ? String(input.valueAfterBrl) : null,
+        notes: input.notes ?? null,
+      })
+      .where(eq(proposalRevisions.id, input.revisionId))
+      .returning();
+
+    if (!revision) {
+      throw new Error("Falha ao atualizar revisão");
+    }
+
+    return toDomain(revision);
+  }
+
+  async deleteById(revisionId: string): Promise<void> {
+    await this.database
+      .delete(proposalRevisions)
+      .where(eq(proposalRevisions.id, revisionId));
   }
 }

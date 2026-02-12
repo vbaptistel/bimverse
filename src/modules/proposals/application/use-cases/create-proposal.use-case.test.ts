@@ -92,6 +92,12 @@ class FakeRevisionRepository implements RevisionRepositoryPort {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
   }
+
+  async updateRevision(): Promise<ProposalRevision> {
+    throw new Error("not implemented");
+  }
+
+  async deleteById(): Promise<void> {}
 }
 
 describe("CreateProposalUseCase", () => {

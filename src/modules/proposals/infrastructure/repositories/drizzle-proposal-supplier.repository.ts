@@ -4,6 +4,7 @@ import type {
   CreateProposalSupplierLinkInput,
   ProposalSupplierLink,
   ProposalSupplierRepositoryPort,
+  UpdateProposalSupplierLinkInput,
 } from "@/modules/proposals/application/ports/proposal-supplier-repository.port";
 import {
   proposalRevisions,
@@ -115,7 +116,47 @@ export class DrizzleProposalSupplierRepository
     return rows.map(toDomain);
   }
 
-  async existsLink(proposalId: string, supplierId: string): Promise<boolean> {
+  async findManyByProposalAndRevision(
+    proposalId: string,
+    revisionId: string,
+  ): Promise<ProposalSupplierLink[]> {
+    const rows = await this.database
+      .select({
+        id: proposalSuppliers.id,
+        proposalId: proposalSuppliers.proposalId,
+        revisionId: proposalSuppliers.revisionId,
+        revisionNumber: proposalRevisions.revisionNumber,
+        supplierId: proposalSuppliers.supplierId,
+        supplierLegalName: suppliers.legalName,
+        supplierSpecialty: suppliers.specialty,
+        roleDescription: proposalSuppliers.roleDescription,
+        quotedHourlyCostBrl: proposalSuppliers.quotedHourlyCostBrl,
+        estimatedHours: proposalSuppliers.estimatedHours,
+        quotedTotalBrl: proposalSuppliers.quotedTotalBrl,
+        createdAt: proposalSuppliers.createdAt,
+      })
+      .from(proposalSuppliers)
+      .innerJoin(suppliers, eq(suppliers.id, proposalSuppliers.supplierId))
+      .leftJoin(
+        proposalRevisions,
+        eq(proposalRevisions.id, proposalSuppliers.revisionId),
+      )
+      .where(
+        and(
+          eq(proposalSuppliers.proposalId, proposalId),
+          eq(proposalSuppliers.revisionId, revisionId),
+        ),
+      )
+      .orderBy(desc(proposalSuppliers.createdAt));
+
+    return rows.map(toDomain);
+  }
+
+  async existsLink(
+    proposalId: string,
+    supplierId: string,
+    revisionId: string,
+  ): Promise<boolean> {
     const [existing] = await this.database
       .select({ id: proposalSuppliers.id })
       .from(proposalSuppliers)
@@ -123,6 +164,7 @@ export class DrizzleProposalSupplierRepository
         and(
           eq(proposalSuppliers.proposalId, proposalId),
           eq(proposalSuppliers.supplierId, supplierId),
+          eq(proposalSuppliers.revisionId, revisionId),
         ),
       )
       .limit(1);
@@ -168,9 +210,94 @@ export class DrizzleProposalSupplierRepository
     return created;
   }
 
+  async copyRevisionLinks(
+    proposalId: string,
+    sourceRevisionId: string,
+    targetRevisionId: string,
+  ): Promise<number> {
+    const sourceLinks = await this.database
+      .select({
+        supplierId: proposalSuppliers.supplierId,
+        roleDescription: proposalSuppliers.roleDescription,
+        quotedHourlyCostBrl: proposalSuppliers.quotedHourlyCostBrl,
+        estimatedHours: proposalSuppliers.estimatedHours,
+        quotedTotalBrl: proposalSuppliers.quotedTotalBrl,
+      })
+      .from(proposalSuppliers)
+      .where(
+        and(
+          eq(proposalSuppliers.proposalId, proposalId),
+          eq(proposalSuppliers.revisionId, sourceRevisionId),
+        ),
+      );
+
+    if (sourceLinks.length === 0) {
+      return 0;
+    }
+
+    const inserted = await this.database
+      .insert(proposalSuppliers)
+      .values(
+        sourceLinks.map((link) => ({
+          proposalId,
+          revisionId: targetRevisionId,
+          supplierId: link.supplierId,
+          roleDescription: link.roleDescription,
+          quotedHourlyCostBrl: link.quotedHourlyCostBrl,
+          estimatedHours: link.estimatedHours,
+          quotedTotalBrl: link.quotedTotalBrl,
+        })),
+      )
+      .returning({ id: proposalSuppliers.id });
+
+    return inserted.length;
+  }
+
+  async updateLinkValues(
+    input: UpdateProposalSupplierLinkInput,
+  ): Promise<ProposalSupplierLink> {
+    const [row] = await this.database
+      .update(proposalSuppliers)
+      .set({
+        roleDescription: input.roleDescription ?? null,
+        quotedHourlyCostBrl:
+          input.quotedHourlyCostBrl !== undefined &&
+          input.quotedHourlyCostBrl !== null
+            ? String(input.quotedHourlyCostBrl)
+            : null,
+        estimatedHours:
+          input.estimatedHours !== undefined && input.estimatedHours !== null
+            ? String(input.estimatedHours)
+            : null,
+        quotedTotalBrl:
+          input.quotedTotalBrl !== undefined && input.quotedTotalBrl !== null
+            ? String(input.quotedTotalBrl)
+            : null,
+      })
+      .where(eq(proposalSuppliers.id, input.linkId))
+      .returning({ id: proposalSuppliers.id });
+
+    if (!row) {
+      throw new Error("Falha ao atualizar vínculo de fornecedor");
+    }
+
+    const updated = await this.findById(row.id);
+    if (!updated) {
+      throw new Error("Falha ao carregar vínculo de fornecedor atualizado");
+    }
+
+    return updated;
+  }
+
   async deleteById(linkId: string): Promise<void> {
     await this.database
       .delete(proposalSuppliers)
       .where(eq(proposalSuppliers.id, linkId));
+  }
+
+  async deleteManyByRevisionId(revisionId: string): Promise<void> {
+    await this.database
+      .delete(proposalSuppliers)
+      .where(eq(proposalSuppliers.revisionId, revisionId));
   }
 }

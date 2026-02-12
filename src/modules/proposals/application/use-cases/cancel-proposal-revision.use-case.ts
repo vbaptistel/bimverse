@@ -1,6 +1,9 @@
+import type { AttachmentRepositoryPort } from "@/modules/attachments/application/ports/attachment-repository.port";
 import type { Proposal } from "@/modules/proposals/domain/proposal";
 import type { ActivityLogRepositoryPort } from "@/modules/proposals/application/ports/activity-log-repository.port";
 import type { ProposalRepositoryPort } from "@/modules/proposals/application/ports/proposal-repository.port";
+import type { ProposalSupplierRepositoryPort } from "@/modules/proposals/application/ports/proposal-supplier-repository.port";
+import type { RevisionRepositoryPort } from "@/modules/proposals/application/ports/revision-repository.port";
 import { findPendingRevisionCycle } from "@/modules/proposals/application/use-cases/revision-cycle.utils";
 import type { UseCase } from "@/shared/application/use-case";
 import { NotFoundError, ValidationError } from "@/shared/domain/errors";
@@ -17,6 +20,9 @@ export class CancelProposalRevisionUseCase
 {
   constructor(
     private readonly proposalRepository: ProposalRepositoryPort,
+    private readonly revisionRepository: RevisionRepositoryPort,
+    private readonly proposalSupplierRepository: ProposalSupplierRepositoryPort,
+    private readonly attachmentRepository: AttachmentRepositoryPort,
     private readonly activityLogRepository: ActivityLogRepositoryPort,
   ) {}
 
@@ -41,6 +47,19 @@ export class CancelProposalRevisionUseCase
       throw new ValidationError("Não há ciclo de revisão pendente para cancelar");
     }
 
+    const pendingRevision = await this.revisionRepository.findById(
+      pendingCycle.revisionId,
+    );
+    if (!pendingRevision || pendingRevision.proposalId !== proposal.id) {
+      throw new ValidationError("Revisão pendente inválida para cancelamento");
+    }
+
+    await this.attachmentRepository.deleteManyByRevisionId(pendingCycle.revisionId);
+    await this.proposalSupplierRepository.deleteManyByRevisionId(
+      pendingCycle.revisionId,
+    );
+    await this.revisionRepository.deleteById(pendingCycle.revisionId);
+
     await this.proposalRepository.updateBaseFields({
       proposalId: proposal.id,
       projectName: proposal.projectName,
@@ -61,6 +80,8 @@ export class CancelProposalRevisionUseCase
       action: "revision_cycle_canceled",
       metadata: {
         cycleId: pendingCycle.cycleId,
+        revisionId: pendingCycle.revisionId,
+        revisionNumber: pendingCycle.revisionNumber,
       },
       createdBy: input.canceledBy,
     });

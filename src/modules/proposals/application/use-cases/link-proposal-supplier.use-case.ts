@@ -8,11 +8,11 @@ import type { RevisionRepositoryPort } from "@/modules/proposals/application/por
 import type { SupplierRepositoryPort } from "@/modules/suppliers/application/ports/supplier-repository.port";
 import type { UseCase } from "@/shared/application/use-case";
 import { NotFoundError, ValidationError } from "@/shared/domain/errors";
+import { findPendingRevisionCycle } from "@/modules/proposals/application/use-cases/revision-cycle.utils";
 
 export interface LinkProposalSupplierInput {
   proposalId: string;
   supplierId: string;
-  revisionId?: string | null;
   roleDescription?: string | null;
   quotedHourlyCostBrl?: number | null;
   estimatedHours?: number | null;
@@ -49,25 +49,55 @@ export class LinkProposalSupplierUseCase
       throw new NotFoundError("Fornecedor não encontrado");
     }
 
-    if (input.revisionId) {
-      const revision = await this.revisionRepository.findById(input.revisionId);
-      if (!revision || revision.proposalId !== input.proposalId) {
-        throw new ValidationError("Revisão inválida para vincular fornecedor");
+    if (proposal.status !== "em_elaboracao" && proposal.status !== "em_revisao") {
+      throw new ValidationError(
+        "Fornecedor só pode ser vinculado em proposta em elaboração ou em revisão",
+      );
+    }
+
+    let targetRevisionId: string;
+
+    if (proposal.status === "em_revisao") {
+      const events = await this.activityLogRepository.findManyByEntity(
+        "proposal",
+        proposal.id,
+      );
+      const pendingCycle = findPendingRevisionCycle(events);
+      if (!pendingCycle) {
+        throw new ValidationError("Não há revisão pendente para vincular fornecedor");
       }
+
+      const revision = await this.revisionRepository.findById(pendingCycle.revisionId);
+      if (!revision || revision.proposalId !== proposal.id) {
+        throw new ValidationError("Revisão pendente inválida para vincular fornecedor");
+      }
+
+      targetRevisionId = revision.id;
+    } else {
+      const revisions = await this.revisionRepository.findManyByProposalId(
+        proposal.id,
+      );
+      const baseRevision = revisions.find((revision) => revision.revisionNumber === 0);
+      if (!baseRevision) {
+        throw new ValidationError("Revisão R0 não encontrada para vincular fornecedor");
+      }
+
+      targetRevisionId = baseRevision.id;
     }
 
     const alreadyLinked = await this.proposalSupplierRepository.existsLink(
       input.proposalId,
       input.supplierId,
+      targetRevisionId,
     );
 
     if (alreadyLinked) {
-      throw new ValidationError("Fornecedor já vinculado nesta proposta");
+      throw new ValidationError("Fornecedor já vinculado nesta revisão");
     }
 
     const link = await this.proposalSupplierRepository.createLink({
       proposalId: input.proposalId,
-      revisionId: input.revisionId ?? null,
+      revisionId: targetRevisionId,
       supplierId: input.supplierId,
       roleDescription: input.roleDescription?.trim() || null,
       quotedHourlyCostBrl: input.quotedHourlyCostBrl ?? null,

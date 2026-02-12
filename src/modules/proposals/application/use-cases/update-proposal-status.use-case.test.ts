@@ -84,13 +84,20 @@ class FakeProposalRepository implements ProposalRepositoryPort {
 }
 
 class FakeActivityLogRepository implements ActivityLogRepositoryPort {
-  async create() {
+  readonly createdEntries: Array<{ action: string; metadata: Record<string, unknown> }> = [];
+
+  async create(input: Parameters<ActivityLogRepositoryPort["create"]>[0]) {
+    this.createdEntries.push({
+      action: input.action,
+      metadata: input.metadata ?? {},
+    });
+
     return {
       id: "activity-1",
       entityType: "proposal" as const,
       entityId: "proposal-1",
       action: "status_changed",
-      metadata: {},
+      metadata: input.metadata ?? {},
       createdBy: "user-1",
       createdAt: new Date(),
     };
@@ -103,20 +110,25 @@ class FakeActivityLogRepository implements ActivityLogRepositoryPort {
 
 describe("UpdateProposalStatusUseCase", () => {
   it("permite transição válida", async () => {
+    const activityLogRepository = new FakeActivityLogRepository();
     const useCase = new UpdateProposalStatusUseCase(
       new FakeProposalRepository("enviada"),
-      new FakeActivityLogRepository(),
+      activityLogRepository,
     );
 
     const updated = await useCase.execute({
       proposalId: "proposal-1",
       status: "ganha",
       finalValueBrl: 1000,
+      statusDate: "2026-02-10",
       changedBy: "user-1",
     });
 
     expect(updated.status).toBe("ganha");
     expect(updated.finalValueBrl).toBe(1000);
+    expect(activityLogRepository.createdEntries[0]?.metadata.statusDate).toBe(
+      "2026-02-10",
+    );
   });
 
   it("bloqueia transição inválida", async () => {
@@ -182,6 +194,25 @@ describe("UpdateProposalStatusUseCase", () => {
       }),
     ).rejects.toThrow(
       "Status em revisão só pode ser iniciado pelo botão Criar nova revisão",
+    );
+  });
+
+  it("rejeita statusDate para status sem suporte", async () => {
+    const useCase = new UpdateProposalStatusUseCase(
+      new FakeProposalRepository("enviada"),
+      new FakeActivityLogRepository(),
+    );
+
+    await expect(
+      useCase.execute({
+        proposalId: "proposal-1",
+        status: "perdida",
+        outcomeReason: "Concorrência mais barata",
+        statusDate: "2026-02-10",
+        changedBy: "user-1",
+      }),
+    ).rejects.toThrow(
+      "Data de evento só pode ser informada para status enviada ou ganha",
     );
   });
 });

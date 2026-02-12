@@ -23,6 +23,8 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
   constructor(private readonly database: Database) {}
 
   async getSummary(): Promise<DashboardSummary> {
+    const monthBucket = sql`DATE_TRUNC('month', ${proposals.createdAt})`;
+
     const [totals] = await this.database
       .select({
         totalProposals: sql<number>`COUNT(*)`,
@@ -67,6 +69,30 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
       .orderBy(sql`COUNT(${proposals.id}) DESC`)
       .limit(10);
 
+    const valueTimelineByStatusRows = await this.database
+      .select({
+        month: sql<string>`TO_CHAR(${monthBucket}, 'YYYY-MM')`,
+        status: proposals.status,
+        totalValueBrl:
+          sql<string>`COALESCE(SUM(COALESCE(${proposals.finalValueBrl}, ${proposals.estimatedValueBrl})), 0)`,
+      })
+      .from(proposals)
+      .groupBy(monthBucket, proposals.status)
+      .orderBy(monthBucket, proposals.status);
+
+    const valueTimelineByCustomerRows = await this.database
+      .select({
+        month: sql<string>`TO_CHAR(${monthBucket}, 'YYYY-MM')`,
+        customerId: customers.id,
+        customerName: customers.name,
+        totalValueBrl:
+          sql<string>`COALESCE(SUM(COALESCE(${proposals.finalValueBrl}, ${proposals.estimatedValueBrl})), 0)`,
+      })
+      .from(proposals)
+      .innerJoin(customers, eq(customers.id, proposals.customerId))
+      .groupBy(monthBucket, customers.id, customers.name)
+      .orderBy(monthBucket, customers.name);
+
     const won = toNumber(totals?.wonProposals);
     const lost = toNumber(totals?.lostProposals);
     const base = won + lost;
@@ -99,6 +125,17 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
           wonValueTotalBrl: toNumber(row.wonValueTotalBrl),
         };
       }) as DashboardCustomerMetric[],
+      valueTimelineByStatus: valueTimelineByStatusRows.map((row) => ({
+        month: row.month,
+        status: row.status,
+        totalValueBrl: toNumber(row.totalValueBrl),
+      })),
+      valueTimelineByCustomer: valueTimelineByCustomerRows.map((row) => ({
+        month: row.month,
+        customerId: row.customerId,
+        customerName: row.customerName,
+        totalValueBrl: toNumber(row.totalValueBrl),
+      })),
     };
   }
 }

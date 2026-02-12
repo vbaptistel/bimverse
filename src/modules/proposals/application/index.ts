@@ -13,4 +13,5 @@ export * from "@/modules/proposals/application/use-cases/prepare-revision-docume
 export * from "@/modules/proposals/application/use-cases/start-proposal-revision-cycle.use-case";
 export * from "@/modules/proposals/application/use-cases/unlink-proposal-supplier.use-case";
 export * from "@/modules/proposals/application/use-cases/update-proposal-base.use-case";
+export * from "@/modules/proposals/application/use-cases/update-proposal-supplier-link.use-case";
 export * from "@/modules/proposals/application/use-cases/update-proposal-status.use-case";

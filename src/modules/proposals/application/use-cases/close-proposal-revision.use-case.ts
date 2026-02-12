@@ -127,13 +127,14 @@ export class CloseProposalRevisionUseCase
       throw new ValidationError("Não há ciclo de revisão pendente para fechar");
     }
 
-    const nextRevisionNumber = await this.revisionRepository.getNextRevisionNumber(
-      proposal.id,
-    );
+    const revision = await this.revisionRepository.findById(pendingCycle.revisionId);
+    if (!revision || revision.proposalId !== proposal.id) {
+      throw new ValidationError("Revisão pendente inválida para fechamento");
+    }
 
     validateRevisionDocumentName(
       storageContext.proposalCode,
-      nextRevisionNumber,
+      pendingCycle.revisionNumber,
       input.fileName,
     );
 
@@ -142,24 +143,22 @@ export class CloseProposalRevisionUseCase
       throw new ValidationError("Arquivo da revisão não encontrado no storage");
     }
 
-    const revision = await this.revisionRepository.createRevision({
+    const updatedRevision = await this.revisionRepository.updateRevision({
+      revisionId: pendingCycle.revisionId,
       ...calculateAutomaticDiscount(
         pendingCycle.snapshot.estimatedValueBrl,
         proposal.estimatedValueBrl,
       ),
-      proposalId: proposal.id,
-      revisionNumber: nextRevisionNumber,
       reason: input.reason.trim(),
       scopeChanges: input.scopeChanges?.trim() || null,
       valueBeforeBrl: pendingCycle.snapshot.estimatedValueBrl,
       valueAfterBrl: proposal.estimatedValueBrl,
       notes: input.notes?.trim() || null,
-      createdBy: input.closedBy,
     });
 
     const attachment = await this.attachmentRepository.createAttachment({
       proposalId: proposal.id,
-      revisionId: revision.id,
+      revisionId: updatedRevision.id,
       category: "proposta_word",
       fileName: input.fileName,
       storagePath: input.storagePath,
@@ -179,9 +178,9 @@ export class CloseProposalRevisionUseCase
       action: "revision_cycle_closed",
       metadata: {
         cycleId: pendingCycle.cycleId,
-        revisionId: revision.id,
-        revisionNumber: revision.revisionNumber,
-        reason: revision.reason,
+        revisionId: updatedRevision.id,
+        revisionNumber: updatedRevision.revisionNumber,
+        reason: updatedRevision.reason,
       },
       createdBy: input.closedBy,
     });
@@ -200,7 +199,7 @@ export class CloseProposalRevisionUseCase
 
     return {
       proposal: updatedProposal,
-      revision,
+      revision: updatedRevision,
       attachment,
     };
   }

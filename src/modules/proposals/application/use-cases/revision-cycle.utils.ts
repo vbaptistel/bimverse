@@ -8,6 +8,8 @@ export interface RevisionCycleSnapshot {
 
 export interface PendingRevisionCycle {
   cycleId: string;
+  revisionId: string;
+  revisionNumber: number;
   openedAt: Date;
   snapshot: RevisionCycleSnapshot;
 }
@@ -70,13 +72,22 @@ export function findPendingRevisionCycle(
   }
 
   const cycleId = opened.metadata.cycleId;
+  const revisionId = opened.metadata.revisionId;
+  const revisionNumber = opened.metadata.revisionNumber;
   const snapshot = readSnapshot(opened.metadata);
-  if (typeof cycleId !== "string" || !snapshot) {
+  if (
+    typeof cycleId !== "string" ||
+    typeof revisionId !== "string" ||
+    typeof revisionNumber !== "number" ||
+    !snapshot
+  ) {
     return null;
   }
 
   return {
     cycleId,
+    revisionId,
+    revisionNumber,
     openedAt: opened.createdAt,
     snapshot,
   };

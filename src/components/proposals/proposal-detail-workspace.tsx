@@ -8,6 +8,7 @@ import {
   History,
   Link2,
   Loader2,
+  Pencil,
   Plus,
   RotateCcw,
   Save,
@@ -61,6 +62,7 @@ import {
   startProposalRevisionCycleAction,
   unlinkProposalSupplierAction,
   updateProposalBaseAction,
+  updateProposalSupplierLinkAction,
   type UpdateProposalBaseSchema,
   updateProposalBaseSchema,
   updateProposalStatusAction,
@@ -134,7 +136,14 @@ interface AttachmentUploadFormValues {
 
 interface SupplierLinkFormValues {
   supplierId: string;
-  revisionId: string | null;
+  roleDescription: string | null;
+  quotedHourlyCostBrl: number | null;
+  estimatedHours: number | null;
+  quotedTotalBrl: number | null;
+}
+
+interface SupplierEditFormValues {
+  linkId: string;
   roleDescription: string | null;
   quotedHourlyCostBrl: number | null;
   estimatedHours: number | null;
@@ -144,6 +153,7 @@ interface SupplierLinkFormValues {
 interface ProposalStatusFormValues {
   proposalId: string;
   status: ProposalStatus;
+  statusDate: string | null;
 }
 
 function toNullableText(value?: string | null): string | null {
@@ -181,11 +191,25 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function toInputDateValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isAttachmentModalOpen, setAttachmentModalOpen] = useState(false);
   const [isSupplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [isSupplierEditModalOpen, setSupplierEditModalOpen] = useState(false);
+  const [editingSupplierLinkId, setEditingSupplierLinkId] = useState<string | null>(
+    null,
+  );
+  const [selectedSupplierRevisionId, setSelectedSupplierRevisionId] = useState<
+    string | null
+  >(null);
   const [isStatusModalOpen, setStatusModalOpen] = useState(false);
   const [statusReason, setStatusReason] = useState("");
   const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
@@ -225,6 +249,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     defaultValues: {
       proposalId: detail.proposal.id,
       status: detail.proposal.status,
+      statusDate: null,
     },
   });
 
@@ -247,7 +272,16 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const supplierLinkForm = useForm<SupplierLinkFormValues>({
     defaultValues: {
       supplierId: "",
-      revisionId: null,
+      roleDescription: null,
+      quotedHourlyCostBrl: null,
+      estimatedHours: null,
+      quotedTotalBrl: null,
+    },
+  });
+
+  const supplierEditForm = useForm<SupplierEditFormValues>({
+    defaultValues: {
+      linkId: "",
       roleDescription: null,
       quotedHourlyCostBrl: null,
       estimatedHours: null,
@@ -268,6 +302,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     statusForm.reset({
       proposalId: detail.proposal.id,
       status: detail.proposal.status,
+      statusDate: null,
     });
   }, [detail, baseForm, statusForm]);
 
@@ -292,7 +327,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     }
 
     return latestRevision.valueAfterBrl ?? latestRevision.valueBeforeBrl ?? null;
-  }, [detail.revisions]);
+  }, [detail]);
 
   const revisionDiscountPreview = useMemo(() => {
     if (
@@ -336,28 +371,126 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const selectedStatusInModal = statusForm.watch("status");
   const statusRequiresReasonInModal =
     selectedStatusInModal === "perdida" || selectedStatusInModal === "cancelada";
+  const statusRequiresDateInModal =
+    selectedStatusInModal === "enviada" || selectedStatusInModal === "ganha";
+  const statusDateLabelInModal =
+    selectedStatusInModal === "enviada" ? "Data de envio" : "Data de ganho";
+  const baseRevision = useMemo(
+    () => detail.revisions.find((revision) => revision.revisionNumber === 0) ?? null,
+    [detail.revisions],
+  );
+  const currentSupplierRevisionId = useMemo(() => {
+    if (detail.proposal.status === "em_revisao") {
+      return detail.pendingRevisionCycle?.revisionId ?? null;
+    }
+
+    if (detail.proposal.status === "em_elaboracao") {
+      return baseRevision?.id ?? null;
+    }
+
+    return null;
+  }, [baseRevision, detail.pendingRevisionCycle, detail.proposal.status]);
+  const canManageSuppliersByStatus =
+    detail.proposal.status === "em_elaboracao" || detail.proposal.status === "em_revisao";
+  const selectedSupplierRevisionNumber = selectedSupplierRevisionId
+    ? revisionById.get(selectedSupplierRevisionId)?.revisionNumber ?? null
+    : null;
+  const isViewingCurrentSupplierRevision =
+    selectedSupplierRevisionId !== null &&
+    currentSupplierRevisionId !== null &&
+    selectedSupplierRevisionId === currentSupplierRevisionId;
+  const canManageSupplierLinks =
+    canManageSuppliersByStatus &&
+    currentSupplierRevisionId !== null &&
+    isViewingCurrentSupplierRevision;
   const selectedSupplierId = supplierLinkForm.watch("supplierId");
   const selectedSupplierHourlyCost = supplierLinkForm.watch("quotedHourlyCostBrl");
   const selectedSupplierEstimatedHours = supplierLinkForm.watch("estimatedHours");
   const selectedSupplierQuotedTotal = supplierLinkForm.watch("quotedTotalBrl");
+  const selectedEditSupplierHourlyCost = supplierEditForm.watch("quotedHourlyCostBrl");
+  const selectedEditSupplierEstimatedHours = supplierEditForm.watch("estimatedHours");
+  const selectedEditSupplierQuotedTotal = supplierEditForm.watch("quotedTotalBrl");
 
   const supplierOptionsById = useMemo(
     () => new Map(detail.supplierOptions.map((supplier) => [supplier.id, supplier])),
     [detail.supplierOptions],
   );
-  const linkedSupplierIds = useMemo(
-    () => new Set(detail.supplierLinks.map((link) => link.supplierId)),
-    [detail.supplierLinks],
+  const selectedSupplierLinks = useMemo(
+    () =>
+      selectedSupplierRevisionId
+        ? detail.supplierLinks.filter(
+            (link) => link.revisionId === selectedSupplierRevisionId,
+          )
+        : [],
+    [detail.supplierLinks, selectedSupplierRevisionId],
+  );
+  const currentRevisionLinkedSupplierIds = useMemo(
+    () =>
+      new Set(
+        detail.supplierLinks
+          .filter((link) => link.revisionId === currentSupplierRevisionId)
+          .map((link) => link.supplierId),
+      ),
+    [currentSupplierRevisionId, detail.supplierLinks],
+  );
+  const editingSupplierLink = useMemo(
+    () =>
+      editingSupplierLinkId
+        ? detail.supplierLinks.find((link) => link.id === editingSupplierLinkId) ?? null
+        : null,
+    [detail.supplierLinks, editingSupplierLinkId],
   );
   const suppliersQuotedTotalBrl = useMemo(
     () =>
       Number(
-        detail.supplierLinks
+        selectedSupplierLinks
           .reduce((sum, link) => sum + (link.quotedTotalBrl ?? 0), 0)
           .toFixed(2),
       ),
-    [detail.supplierLinks],
+    [selectedSupplierLinks],
   );
+
+  useEffect(() => {
+    const currentStatusDate = statusForm.getValues("statusDate");
+
+    if (!statusRequiresDateInModal) {
+      if (currentStatusDate !== null) {
+        statusForm.setValue("statusDate", null, { shouldDirty: false });
+      }
+      return;
+    }
+
+    if (currentStatusDate) {
+      return;
+    }
+
+    statusForm.setValue("statusDate", toInputDateValue(new Date()), {
+      shouldDirty: false,
+    });
+  }, [statusRequiresDateInModal, statusForm]);
+
+  useEffect(() => {
+    if (detail.revisions.length === 0) {
+      if (selectedSupplierRevisionId !== null) {
+        setSelectedSupplierRevisionId(null);
+      }
+      return;
+    }
+
+    if (
+      selectedSupplierRevisionId !== null &&
+      revisionById.has(selectedSupplierRevisionId)
+    ) {
+      return;
+    }
+
+    setSelectedSupplierRevisionId(currentSupplierRevisionId ?? detail.revisions[0]!.id);
+  }, [
+    currentSupplierRevisionId,
+    detail.revisions,
+    revisionById,
+    selectedSupplierRevisionId,
+  ]);
 
   useEffect(() => {
     if (!selectedSupplierId) {
@@ -401,6 +534,32 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     });
   }, [selectedSupplierHourlyCost, selectedSupplierEstimatedHours, supplierLinkForm]);
 
+  useEffect(() => {
+    if (
+      selectedEditSupplierHourlyCost === null ||
+      selectedEditSupplierHourlyCost === undefined ||
+      selectedEditSupplierEstimatedHours === null ||
+      selectedEditSupplierEstimatedHours === undefined
+    ) {
+      supplierEditForm.setValue("quotedTotalBrl", null, {
+        shouldDirty: false,
+      });
+      return;
+    }
+
+    const quotedTotal = Number(
+      (selectedEditSupplierHourlyCost * selectedEditSupplierEstimatedHours).toFixed(2),
+    );
+
+    supplierEditForm.setValue("quotedTotalBrl", quotedTotal, {
+      shouldDirty: false,
+    });
+  }, [
+    selectedEditSupplierHourlyCost,
+    selectedEditSupplierEstimatedHours,
+    supplierEditForm,
+  ]);
+
   const handleBaseSave = baseForm.handleSubmit((values) => {
     const criticalFieldsChanged =
       detail.proposal.scopeDescription !== values.scopeDescription.trim() ||
@@ -438,6 +597,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     statusForm.reset({
       proposalId: detail.proposal.id,
       status: detail.proposal.status,
+      statusDate: null,
     });
   };
 
@@ -467,7 +627,9 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
     const nextStatus = values.status as ManualProposalStatus;
     const requiresReason = nextStatus === "perdida" || nextStatus === "cancelada";
+    const requiresStatusDate = nextStatus === "enviada" || nextStatus === "ganha";
     const reason = toNullableText(statusReason);
+    const statusDate = requiresStatusDate ? values.statusDate || null : null;
     if (requiresReason && !reason) {
       toast.error("Motivo é obrigatório para status perdida ou cancelada.");
       return;
@@ -478,6 +640,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         proposalId: values.proposalId,
         status: nextStatus,
         outcomeReason: requiresReason ? reason : null,
+        statusDate,
       });
 
       if (!result.success) {
@@ -621,7 +784,18 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     setSupplierModalOpen(false);
     supplierLinkForm.reset({
       supplierId: "",
-      revisionId: null,
+      roleDescription: null,
+      quotedHourlyCostBrl: null,
+      estimatedHours: null,
+      quotedTotalBrl: null,
+    });
+  };
+
+  const closeSupplierEditModal = () => {
+    setSupplierEditModalOpen(false);
+    setEditingSupplierLinkId(null);
+    supplierEditForm.reset({
+      linkId: "",
       roleDescription: null,
       quotedHourlyCostBrl: null,
       estimatedHours: null,
@@ -703,6 +877,11 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   };
 
   const handleLinkSupplier = supplierLinkForm.handleSubmit((values) => {
+    if (!canManageSupplierLinks) {
+      toast.error("Selecione a revisão atual para gerenciar fornecedores.");
+      return;
+    }
+
     startTransition(async () => {
       const calculatedQuotedTotal =
         values.quotedHourlyCostBrl !== null &&
@@ -715,7 +894,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       const result = await linkProposalSupplierAction({
         proposalId: detail.proposal.id,
         supplierId: values.supplierId,
-        revisionId: values.revisionId,
         roleDescription: toNullableText(values.roleDescription),
         quotedHourlyCostBrl: values.quotedHourlyCostBrl ?? null,
         estimatedHours: values.estimatedHours ?? null,
@@ -733,7 +911,68 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     });
   });
 
+  const handleOpenSupplierEdit = (linkId: string) => {
+    if (!canManageSupplierLinks) {
+      toast.error("Selecione a revisão atual para gerenciar fornecedores.");
+      return;
+    }
+
+    const link = detail.supplierLinks.find((item) => item.id === linkId);
+    if (!link) {
+      return;
+    }
+
+    setEditingSupplierLinkId(link.id);
+    supplierEditForm.reset({
+      linkId: link.id,
+      roleDescription: link.roleDescription,
+      quotedHourlyCostBrl: link.quotedHourlyCostBrl,
+      estimatedHours: link.estimatedHours,
+      quotedTotalBrl: link.quotedTotalBrl,
+    });
+    setSupplierEditModalOpen(true);
+  };
+
+  const handleUpdateSupplierLink = supplierEditForm.handleSubmit((values) => {
+    if (!canManageSupplierLinks) {
+      toast.error("Selecione a revisão atual para gerenciar fornecedores.");
+      return;
+    }
+
+    startTransition(async () => {
+      const calculatedQuotedTotal =
+        values.quotedHourlyCostBrl !== null &&
+          values.quotedHourlyCostBrl !== undefined &&
+          values.estimatedHours !== null &&
+          values.estimatedHours !== undefined
+          ? Number((values.quotedHourlyCostBrl * values.estimatedHours).toFixed(2))
+          : null;
+
+      const result = await updateProposalSupplierLinkAction({
+        linkId: values.linkId,
+        roleDescription: toNullableText(values.roleDescription),
+        quotedHourlyCostBrl: values.quotedHourlyCostBrl ?? null,
+        estimatedHours: values.estimatedHours ?? null,
+        quotedTotalBrl: values.quotedTotalBrl ?? calculatedQuotedTotal,
+      });
+
+      if (!result.success) {
+        toast.error(`Erro ao atualizar fornecedor: ${result.error}`);
+        return;
+      }
+
+      toast.success("Fornecedor atualizado com sucesso.");
+      closeSupplierEditModal();
+      router.refresh();
+    });
+  });
+
   const handleUnlinkSupplier = (linkId: string, supplierName: string) => {
+    if (!canManageSupplierLinks) {
+      toast.error("Selecione a revisão atual para gerenciar fornecedores.");
+      return;
+    }
+
     const confirmed = window.confirm(
       `Desvincular fornecedor "${supplierName}" desta proposta?`,
     );
@@ -1175,25 +1414,57 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
       <section>
         <Card>
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
                 <UsersRound size={16} /> Fornecedores vinculados
               </CardTitle>
-              <CardDescription>Lista de fornecedores vinculados.</CardDescription>
+              <CardDescription>
+                {selectedSupplierRevisionNumber !== null
+                  ? `Lista de fornecedores da revisão R${selectedSupplierRevisionNumber}.`
+                  : "Selecione uma revisão para visualizar fornecedores."}
+              </CardDescription>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setSupplierModalOpen(true)}
-              disabled={isPending}
-            >
-              <Plus />
-              Novo fornecedor
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+              <div className="grid w-full gap-1 sm:w-48">
+                <Label htmlFor="supplierRevisionFilter" className="text-xs text-muted-foreground">
+                  Revisão exibida
+                </Label>
+                <Select
+                  value={selectedSupplierRevisionId ?? undefined}
+                  onValueChange={(value) => setSelectedSupplierRevisionId(value)}
+                  disabled={detail.revisions.length === 0}
+                >
+                  <SelectTrigger id="supplierRevisionFilter" className="h-9 w-full">
+                    <SelectValue placeholder="Selecione uma revisão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {detail.revisions.map((revision) => (
+                      <SelectItem key={revision.id} value={revision.id}>
+                        R{revision.revisionNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSupplierModalOpen(true)}
+                disabled={isPending || !canManageSupplierLinks}
+              >
+                <Plus />
+                Novo fornecedor
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
+            {!isViewingCurrentSupplierRevision ? (
+              <div className="mb-4 rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                Revisões anteriores são somente leitura.
+              </div>
+            ) : null}
             <div className="mb-4 rounded-md border border-border bg-muted/30 px-4 py-3">
               <p className="text-xs text-muted-foreground">Custo total cotado</p>
               <p className="text-xl font-semibold text-foreground">
@@ -1206,30 +1477,24 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="px-2 py-2">Fornecedor</th>
                     <th className="px-2 py-2">Especialidade</th>
-                    <th className="px-2 py-2">Revisão</th>
                     <th className="px-2 py-2">Papel</th>
                     <th className="px-2 py-2">Total cotado</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {detail.supplierLinks.length === 0 ? (
+                  {selectedSupplierLinks.length === 0 ? (
                     <tr className="border-b border-border">
-                      <td className="px-2 py-4 text-muted-foreground" colSpan={6}>
+                      <td className="px-2 py-4 text-muted-foreground" colSpan={5}>
                         Nenhum fornecedor vinculado.
                       </td>
                     </tr>
                   ) : (
-                    detail.supplierLinks.map((link) => (
+                    selectedSupplierLinks.map((link) => (
                       <tr key={link.id} className="border-b border-border">
                         <td className="px-2 py-3">{link.supplierLegalName}</td>
                         <td className="px-2 py-3 text-muted-foreground">
                           {link.supplierSpecialty}
-                        </td>
-                        <td className="px-2 py-3">
-                          {link.revisionNumber !== null
-                            ? `R${link.revisionNumber}`
-                            : "Sem revisão"}
                         </td>
                         <td className="px-2 py-3">{link.roleDescription ?? "—"}</td>
                         <td className="px-2 py-3">
@@ -1238,18 +1503,34 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                             : "—"}
                         </td>
                         <td className="px-2 py-3 text-right">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            onClick={() =>
-                              handleUnlinkSupplier(link.id, link.supplierLegalName)
-                            }
-                            disabled={isPending}
-                          >
-                            {isPending ? <Loader2 className="animate-spin" /> : <X />}
-                            Remover
-                          </Button>
+                          {canManageSupplierLinks ? (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleOpenSupplierEdit(link.id)}
+                                disabled={isPending}
+                              >
+                                {isPending ? <Loader2 className="animate-spin" /> : <Pencil />}
+                                Editar
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  handleUnlinkSupplier(link.id, link.supplierLegalName)
+                                }
+                                disabled={isPending}
+                              >
+                                {isPending ? <Loader2 className="animate-spin" /> : <X />}
+                                Remover
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Somente leitura</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -1354,6 +1635,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
           statusForm.reset({
             proposalId: detail.proposal.id,
             status: detail.proposal.status,
+            statusDate: null,
           });
           setStatusReason("");
           setStatusModalOpen(true);
@@ -1392,6 +1674,27 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 </div>
               )}
             />
+
+            {statusRequiresDateInModal ? (
+              <Controller
+                name="statusDate"
+                control={statusForm.control}
+                render={({ field }) => (
+                  <div className="grid gap-2">
+                    <Label htmlFor="statusDateInline">{statusDateLabelInModal}</Label>
+                    <Input
+                      id="statusDateInline"
+                      type="date"
+                      value={field.value ?? ""}
+                      onChange={(event) =>
+                        field.onChange(event.target.value || null)
+                      }
+                      disabled={isPending}
+                    />
+                  </div>
+                )}
+              />
+            ) : null}
 
             {statusRequiresReasonInModal ? (
               <div className="grid gap-2">
@@ -1529,7 +1832,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
           <DialogHeader>
             <DialogTitle>Novo fornecedor vinculado</DialogTitle>
             <DialogDescription>
-              Vincule um fornecedor à proposta ou a uma revisão específica.
+              Vincule um fornecedor à revisão atual.
             </DialogDescription>
           </DialogHeader>
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleLinkSupplier}>
@@ -1542,6 +1845,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   <Select
                     value={field.value || undefined}
                     onValueChange={field.onChange}
+                    disabled={isPending || !canManageSupplierLinks}
                   >
                     <SelectTrigger id="supplierId" className="h-9 w-full">
                       <SelectValue placeholder="Selecione um fornecedor" />
@@ -1551,10 +1855,12 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                         <SelectItem
                           key={supplier.id}
                           value={supplier.id}
-                          disabled={linkedSupplierIds.has(supplier.id)}
+                          disabled={currentRevisionLinkedSupplierIds.has(supplier.id)}
                         >
                           {supplier.legalName} ({supplier.specialty})
-                          {linkedSupplierIds.has(supplier.id) ? " - já vinculado" : ""}
+                          {currentRevisionLinkedSupplierIds.has(supplier.id)
+                            ? " - já vinculado"
+                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1564,36 +1870,19 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="supplierRevisionId">Revisão (opcional)</Label>
-              <Controller
-                name="revisionId"
-                control={supplierLinkForm.control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? "none"}
-                    onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                  >
-                    <SelectTrigger id="supplierRevisionId" className="h-9 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem revisão</SelectItem>
-                      {detail.revisions.map((revision) => (
-                        <SelectItem key={revision.id} value={revision.id}>
-                          R{revision.revisionNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+              <Label>Revisão alvo</Label>
+              <p className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                {currentSupplierRevisionId
+                  ? `R${revisionById.get(currentSupplierRevisionId)?.revisionNumber ?? "?"}`
+                  : "Sem revisão ativa para edição"}
+              </p>
             </div>
 
             <div className="grid gap-2 sm:col-span-2">
               <Label htmlFor="supplierRoleDescription">Papel (opcional)</Label>
               <Input
                 id="supplierRoleDescription"
-                disabled={isPending || !selectedSupplierId}
+                disabled={isPending || !selectedSupplierId || !canManageSupplierLinks}
                 {...supplierLinkForm.register("roleDescription", {
                   setValueAs: (value) => toNullableText(value),
                 })}
@@ -1610,7 +1899,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     id="supplierQuotedHourlyCost"
                     type="text"
                     inputMode="numeric"
-                    disabled={isPending || !selectedSupplierId}
+                    disabled={isPending || !selectedSupplierId || !canManageSupplierLinks}
                     value={
                       field.value === null || field.value === undefined
                         ? ""
@@ -1631,7 +1920,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 id="supplierEstimatedHours"
                 type="number"
                 step="0.01"
-                disabled={isPending || !selectedSupplierId}
+                disabled={isPending || !selectedSupplierId || !canManageSupplierLinks}
                 {...supplierLinkForm.register("estimatedHours", {
                   setValueAs: (value) => toNullableNumber(value),
                 })}
@@ -1659,12 +1948,118 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={isPending}>
+                  <Button type="submit" disabled={isPending || !canManageSupplierLinks}>
                     {isPending ? <Loader2 className="animate-spin" /> : <Link2 />}
                     Vincular fornecedor
                   </Button>
                 </div>
               </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isSupplierEditModalOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeSupplierEditModal();
+            return;
+          }
+
+          setSupplierEditModalOpen(true);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Editar fornecedor vinculado</DialogTitle>
+            <DialogDescription>
+              Atualize os valores do fornecedor na revisão atual.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="grid gap-4" onSubmit={handleUpdateSupplierLink}>
+            <div className="grid gap-2">
+              <Label>Fornecedor</Label>
+              <p className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                {editingSupplierLink
+                  ? `${editingSupplierLink.supplierLegalName} (${editingSupplierLink.supplierSpecialty})`
+                  : "Fornecedor não encontrado"}
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="editSupplierRoleDescription">Papel (opcional)</Label>
+              <Input
+                id="editSupplierRoleDescription"
+                disabled={isPending || !editingSupplierLink}
+                {...supplierEditForm.register("roleDescription", {
+                  setValueAs: (value) => toNullableText(value),
+                })}
+              />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="editSupplierQuotedHourlyCost">Custo por hora</Label>
+                <Controller
+                  name="quotedHourlyCostBrl"
+                  control={supplierEditForm.control}
+                  render={({ field }) => (
+                    <Input
+                      id="editSupplierQuotedHourlyCost"
+                      type="text"
+                      inputMode="numeric"
+                      disabled={isPending || !editingSupplierLink}
+                      value={
+                        field.value === null || field.value === undefined
+                          ? ""
+                          : formatCurrencyBrl(field.value)
+                      }
+                      onBlur={field.onBlur}
+                      onChange={(event) =>
+                        field.onChange(parseCurrencyBrlInput(event.target.value))
+                      }
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="editSupplierEstimatedHours">Horas estimadas</Label>
+                <Input
+                  id="editSupplierEstimatedHours"
+                  type="number"
+                  step="0.01"
+                  disabled={isPending || !editingSupplierLink}
+                  {...supplierEditForm.register("estimatedHours", {
+                    setValueAs: (value) => toNullableNumber(value),
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Custo Total</p>
+              <p className="text-lg font-semibold text-foreground">
+                {selectedEditSupplierQuotedTotal !== null
+                  ? formatCurrencyBrl(selectedEditSupplierQuotedTotal)
+                  : "R$ 0,00"}
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeSupplierEditModal}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending || !editingSupplierLink}>
+                {isPending ? <Loader2 className="animate-spin" /> : <Save />}
+                Salvar alterações
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

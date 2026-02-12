@@ -71,7 +71,14 @@ export const startProposalRevisionCycleSchema = z.object({
 export const linkProposalSupplierSchema = z.object({
   proposalId: z.string().uuid(),
   supplierId: z.string().uuid(),
-  revisionId: z.string().uuid().optional().nullable(),
+  roleDescription: z.string().trim().max(300).optional().nullable(),
+  quotedHourlyCostBrl: z.number().nonnegative().optional().nullable(),
+  estimatedHours: z.number().nonnegative().optional().nullable(),
+  quotedTotalBrl: z.number().nonnegative().optional().nullable(),
+});
+
+export const updateProposalSupplierLinkSchema = z.object({
+  linkId: z.string().uuid(),
   roleDescription: z.string().trim().max(300).optional().nullable(),
   quotedHourlyCostBrl: z.number().nonnegative().optional().nullable(),
   estimatedHours: z.number().nonnegative().optional().nullable(),
@@ -87,6 +94,7 @@ export const updateProposalStatusSchema = z.object({
   status: z.enum(["recebida", "em_elaboracao", "enviada", "ganha", "perdida", "cancelada"]),
   outcomeReason: z.string().trim().max(500).optional().nullable(),
   finalValueBrl: z.number().nonnegative().optional().nullable(),
+  statusDate: z.string().date().optional().nullable(),
 });
 
 export type CreateProposalSchema = z.infer<typeof createProposalSchema>;
@@ -109,6 +117,9 @@ export type UpdateProposalStatusSchema = z.infer<typeof updateProposalStatusSche
 export type ListProposalsSchema = z.infer<typeof listProposalsSchema>;
 export type LinkProposalSupplierSchema = z.infer<
   typeof linkProposalSupplierSchema
+>;
+export type UpdateProposalSupplierLinkSchema = z.infer<
+  typeof updateProposalSupplierLinkSchema
 >;
 export type UnlinkProposalSupplierSchema = z.infer<
   typeof unlinkProposalSupplierSchema

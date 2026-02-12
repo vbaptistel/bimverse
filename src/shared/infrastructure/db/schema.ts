@@ -14,7 +14,6 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("role", ["admin", "comercial"]);
 
@@ -167,9 +166,11 @@ export const proposalSuppliers = pgTable(
     proposalId: uuid("proposal_id")
       .notNull()
       .references(() => proposals.id, { onDelete: "cascade" }),
-    revisionId: uuid("revision_id").references(() => proposalRevisions.id, {
-      onDelete: "set null",
-    }),
+    revisionId: uuid("revision_id")
+      .notNull()
+      .references(() => proposalRevisions.id, {
+        onDelete: "cascade",
+      }),
     supplierId: uuid("supplier_id")
       .notNull()
       .references(() => suppliers.id, { onDelete: "restrict" }),
@@ -188,9 +189,6 @@ export const proposalSuppliers = pgTable(
       table.supplierId,
       table.revisionId,
     ),
-    uniqueIndex("proposal_suppliers_no_revision_ux")
-      .on(table.proposalId, table.supplierId)
-      .where(sql`${table.revisionId} IS NULL`),
   ],
 );
 

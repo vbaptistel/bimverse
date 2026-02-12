@@ -31,6 +31,7 @@ export interface ProposalCustomerRecord {
 
 export interface ProposalListRecord extends Proposal {
   customer?: ProposalCustomerRecord;
+  currentRevisionNumber?: number | null;
 }
 
 export interface CreateProposalRecordInput {

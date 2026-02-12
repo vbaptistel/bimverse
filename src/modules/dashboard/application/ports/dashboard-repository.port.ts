@@ -1,5 +1,7 @@
+import type { ProposalStatus } from "@/shared/domain/types";
+
 export interface DashboardStatusMetric {
-  status: string;
+  status: ProposalStatus;
   count: number;
   totalValueBrl: number;
 }
@@ -15,6 +17,19 @@ export interface DashboardCustomerMetric {
   wonValueTotalBrl: number;
 }
 
+export interface DashboardValueTimelineByStatusMetric {
+  month: string;
+  status: ProposalStatus;
+  totalValueBrl: number;
+}
+
+export interface DashboardValueTimelineByCustomerMetric {
+  month: string;
+  customerId: string;
+  customerName: string;
+  totalValueBrl: number;
+}
+
 export interface DashboardSummary {
   totalProposals: number;
   wonProposals: number;
@@ -24,6 +39,8 @@ export interface DashboardSummary {
   wonValueTotalBrl: number;
   byStatus: DashboardStatusMetric[];
   byCustomer: DashboardCustomerMetric[];
+  valueTimelineByStatus: DashboardValueTimelineByStatusMetric[];
+  valueTimelineByCustomer: DashboardValueTimelineByCustomerMetric[];
 }
 
 export interface DashboardRepositoryPort {

@@ -47,6 +47,20 @@ export interface GetProposalDetailOutput {
   pendingRevisionCycle: PendingRevisionCycle | null;
 }
 
+function parseStatusDate(metadata: Record<string, unknown>): Date | null {
+  const rawStatusDate = metadata.statusDate;
+  if (typeof rawStatusDate !== "string" || rawStatusDate.length === 0) {
+    return null;
+  }
+
+  const parsed = new Date(`${rawStatusDate}T12:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
 function buildHistory(
   revisions: ProposalRevision[],
   attachments: Attachment[],
@@ -76,12 +90,13 @@ function buildHistory(
 
   for (const event of activity) {
     if (event.action === "status_changed") {
+      const statusDate = parseStatusDate(event.metadata);
       entries.push({
         id: `activity-${event.id}`,
         type: "status",
         title: "Status alterado",
         description: `${String(event.metadata.from ?? "—")} -> ${String(event.metadata.to ?? "—")}`,
-        createdAt: event.createdAt,
+        createdAt: statusDate ?? event.createdAt,
       });
       continue;
     }
@@ -97,14 +112,21 @@ function buildHistory(
       continue;
     }
 
-    if (event.action === "supplier_linked" || event.action === "supplier_unlinked") {
+    if (
+      event.action === "supplier_linked" ||
+      event.action === "supplier_unlinked" ||
+      event.action === "supplier_link_updated"
+    ) {
+      const titleByAction: Record<string, string> = {
+        supplier_linked: "Fornecedor vinculado",
+        supplier_unlinked: "Fornecedor desvinculado",
+        supplier_link_updated: "Fornecedor atualizado",
+      };
+
       entries.push({
         id: `activity-${event.id}`,
         type: "supplier",
-        title:
-          event.action === "supplier_linked"
-            ? "Fornecedor vinculado"
-            : "Fornecedor desvinculado",
+        title: titleByAction[event.action] ?? "Fornecedor atualizado",
         description: String(event.metadata.supplierLegalName ?? "Fornecedor"),
         createdAt: event.createdAt,
       });
@@ -145,6 +167,20 @@ function buildTimeline(
         id: `status-in-review-${event.id}`,
         title: "Entrou em revisão",
         date: event.createdAt,
+      });
+    }
+
+    if (
+      event.action === "status_changed" &&
+      (event.metadata.to === "enviada" || event.metadata.to === "ganha")
+    ) {
+      const statusTo = event.metadata.to;
+      const statusDate = parseStatusDate(event.metadata) ?? event.createdAt;
+
+      entries.push({
+        id: `status-${String(statusTo)}-${event.id}`,
+        title: statusTo === "enviada" ? "Proposta enviada" : "Proposta ganha",
+        date: statusDate,
       });
     }
 

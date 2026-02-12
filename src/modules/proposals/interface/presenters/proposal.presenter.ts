@@ -29,6 +29,7 @@ export interface ProposalPresenter {
   outcomeReason: string | null;
   createdAt: string;
   updatedAt: string;
+  currentRevisionNumber: number | null;
   customer: {
     id: string;
     name: string;
@@ -69,6 +70,10 @@ export function presentProposal(
     outcomeReason: proposal.outcomeReason,
     createdAt: proposal.createdAt.toISOString(),
     updatedAt: proposal.updatedAt.toISOString(),
+    currentRevisionNumber:
+      "currentRevisionNumber" in proposal
+        ? (proposal.currentRevisionNumber ?? null)
+        : null,
     customer: "customer" in proposal && proposal.customer ? proposal.customer : null,
   };
 }
@@ -205,6 +210,8 @@ function presentTimelineEntry(
 
 export interface PendingRevisionCyclePresenter {
   cycleId: string;
+  revisionId: string;
+  revisionNumber: number;
   openedAt: string;
   snapshot: {
     scopeDescription: string;
@@ -218,6 +225,8 @@ function presentPendingRevisionCycle(
 ): PendingRevisionCyclePresenter {
   return {
     cycleId: cycle.cycleId,
+    revisionId: cycle.revisionId,
+    revisionNumber: cycle.revisionNumber,
     openedAt: cycle.openedAt.toISOString(),
     snapshot: cycle.snapshot,
   };

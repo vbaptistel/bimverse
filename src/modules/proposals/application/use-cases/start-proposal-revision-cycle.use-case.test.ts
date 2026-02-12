@@ -15,8 +15,19 @@ import type {
   ActivityLogRepositoryPort,
   CreateActivityLogEntryInput,
 } from "@/modules/proposals/application/ports/activity-log-repository.port";
+import type {
+  CreateProposalSupplierLinkInput,
+  ProposalSupplierLink,
+  ProposalSupplierRepositoryPort,
+  UpdateProposalSupplierLinkInput,
+} from "@/modules/proposals/application/ports/proposal-supplier-repository.port";
+import type {
+  CreateRevisionRecordInput,
+  RevisionRepositoryPort,
+  UpdateRevisionRecordInput,
+} from "@/modules/proposals/application/ports/revision-repository.port";
 import { StartProposalRevisionCycleUseCase } from "@/modules/proposals/application/use-cases/start-proposal-revision-cycle.use-case";
-import type { Proposal } from "@/modules/proposals/domain/proposal";
+import type { Proposal, ProposalRevision } from "@/modules/proposals/domain/proposal";
 
 function buildProposal(status: Proposal["status"] = "enviada"): Proposal {
   return {
@@ -36,6 +47,26 @@ function buildProposal(status: Proposal["status"] = "enviada"): Proposal {
     createdBy: "user-1",
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  };
+}
+
+function buildRevision(
+  revisionNumber: number,
+  id = `revision-${revisionNumber}`,
+): ProposalRevision {
+  return {
+    id,
+    proposalId: "proposal-1",
+    revisionNumber,
+    reason: null,
+    scopeChanges: null,
+    discountBrl: null,
+    discountPercent: null,
+    valueBeforeBrl: null,
+    valueAfterBrl: 1000,
+    notes: null,
+    createdBy: "user-1",
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
   };
 }
 
@@ -90,6 +121,159 @@ class FakeProposalRepository implements ProposalRepositoryPort {
   }
 }
 
+class FakeRevisionRepository implements RevisionRepositoryPort {
+  createdRevision: ProposalRevision | null = null;
+
+  constructor(private revisions: ProposalRevision[]) {}
+
+  async getNextRevisionNumber(): Promise<number> {
+    return this.revisions.reduce((max, revision) => {
+      return Math.max(max, revision.revisionNumber);
+    }, -1) + 1;
+  }
+
+  async findById(revisionId: string): Promise<ProposalRevision | null> {
+    return this.revisions.find((revision) => revision.id === revisionId) ?? null;
+  }
+
+  async findManyByProposalId(): Promise<ProposalRevision[]> {
+    return [...this.revisions].sort(
+      (a, b) => b.revisionNumber - a.revisionNumber,
+    );
+  }
+
+  async createRevision(input: CreateRevisionRecordInput): Promise<ProposalRevision> {
+    const revision: ProposalRevision = {
+      id: `revision-${input.revisionNumber}`,
+      proposalId: input.proposalId,
+      revisionNumber: input.revisionNumber,
+      reason: input.reason ?? null,
+      scopeChanges: input.scopeChanges ?? null,
+      discountBrl: input.discountBrl ?? null,
+      discountPercent: input.discountPercent ?? null,
+      valueBeforeBrl: input.valueBeforeBrl ?? null,
+      valueAfterBrl: input.valueAfterBrl ?? null,
+      notes: input.notes ?? null,
+      createdBy: input.createdBy,
+      createdAt: new Date(),
+    };
+
+    this.revisions.push(revision);
+    this.createdRevision = revision;
+
+    return revision;
+  }
+
+  async updateRevision(_input: UpdateRevisionRecordInput): Promise<ProposalRevision> {
+    void _input;
+    throw new Error("not implemented");
+  }
+
+  async deleteById(_revisionId: string): Promise<void> {
+    void _revisionId;
+  }
+}
+
+class FakeProposalSupplierRepository implements ProposalSupplierRepositoryPort {
+  readonly copyCalls: Array<{
+    proposalId: string;
+    sourceRevisionId: string;
+    targetRevisionId: string;
+  }> = [];
+
+  constructor(private links: ProposalSupplierLink[]) {}
+
+  async findById(linkId: string): Promise<ProposalSupplierLink | null> {
+    return this.links.find((link) => link.id === linkId) ?? null;
+  }
+
+  async findManyByProposalId(proposalId: string): Promise<ProposalSupplierLink[]> {
+    return this.links.filter((link) => link.proposalId === proposalId);
+  }
+
+  async findManyByProposalAndRevision(
+    proposalId: string,
+    revisionId: string,
+  ): Promise<ProposalSupplierLink[]> {
+    return this.links.filter(
+      (link) => link.proposalId === proposalId && link.revisionId === revisionId,
+    );
+  }
+
+  async existsLink(
+    proposalId: string,
+    supplierId: string,
+    revisionId: string,
+  ): Promise<boolean> {
+    return this.links.some(
+      (link) =>
+        link.proposalId === proposalId &&
+        link.supplierId === supplierId &&
+        link.revisionId === revisionId,
+    );
+  }
+
+  async createLink(input: CreateProposalSupplierLinkInput): Promise<ProposalSupplierLink> {
+    const link: ProposalSupplierLink = {
+      id: `link-${this.links.length + 1}`,
+      proposalId: input.proposalId,
+      revisionId: input.revisionId,
+      revisionNumber: null,
+      supplierId: input.supplierId,
+      supplierLegalName: "Fornecedor",
+      supplierSpecialty: "BIM",
+      roleDescription: input.roleDescription ?? null,
+      quotedHourlyCostBrl: input.quotedHourlyCostBrl ?? null,
+      estimatedHours: input.estimatedHours ?? null,
+      quotedTotalBrl: input.quotedTotalBrl ?? null,
+      createdAt: new Date(),
+    };
+
+    this.links.push(link);
+    return link;
+  }
+
+  async copyRevisionLinks(
+    proposalId: string,
+    sourceRevisionId: string,
+    targetRevisionId: string,
+  ): Promise<number> {
+    this.copyCalls.push({ proposalId, sourceRevisionId, targetRevisionId });
+
+    const sourceLinks = this.links.filter(
+      (link) =>
+        link.proposalId === proposalId && link.revisionId === sourceRevisionId,
+    );
+
+    for (const sourceLink of sourceLinks) {
+      this.links.push({
+        ...sourceLink,
+        id: `link-${this.links.length + 1}`,
+        revisionId: targetRevisionId,
+        revisionNumber: null,
+        createdAt: new Date(),
+      });
+    }
+
+    return sourceLinks.length;
+  }
+
+  async updateLinkValues(
+    _input: UpdateProposalSupplierLinkInput,
+  ): Promise<ProposalSupplierLink> {
+    void _input;
+    throw new Error("not implemented");
+  }
+
+  async deleteById(_linkId: string): Promise<void> {
+    void _linkId;
+  }
+
+  async deleteManyByRevisionId(_revisionId: string): Promise<void> {
+    void _revisionId;
+  }
+}
+
 class FakeActivityLogRepository implements ActivityLogRepositoryPort {
   readonly created: CreateActivityLogEntryInput[] = [];
 
@@ -115,11 +299,30 @@ class FakeActivityLogRepository implements ActivityLogRepositoryPort {
 }
 
 describe("StartProposalRevisionCycleUseCase", () => {
-  it("inicia revisão manual para proposta enviada", async () => {
+  it("inicia revisão manual para proposta enviada com cópia de fornecedores", async () => {
     const proposalRepository = new FakeProposalRepository(buildProposal("enviada"));
+    const revisionRepository = new FakeRevisionRepository([buildRevision(0, "revision-0")]);
+    const proposalSupplierRepository = new FakeProposalSupplierRepository([
+      {
+        id: "link-1",
+        proposalId: "proposal-1",
+        revisionId: "revision-0",
+        revisionNumber: 0,
+        supplierId: "supplier-1",
+        supplierLegalName: "Fornecedor 1",
+        supplierSpecialty: "BIM",
+        roleDescription: "Coordenação",
+        quotedHourlyCostBrl: 100,
+        estimatedHours: 10,
+        quotedTotalBrl: 1000,
+        createdAt: new Date(),
+      },
+    ]);
     const activityLogRepository = new FakeActivityLogRepository();
     const useCase = new StartProposalRevisionCycleUseCase(
       proposalRepository,
+      revisionRepository,
+      proposalSupplierRepository,
       activityLogRepository,
     );
 
@@ -130,17 +333,28 @@ describe("StartProposalRevisionCycleUseCase", () => {
 
     expect(output.proposal.status).toBe("em_revisao");
     expect(output.cycleId).toBeTruthy();
+    expect(revisionRepository.createdRevision?.revisionNumber).toBe(1);
+    expect(proposalSupplierRepository.copyCalls).toHaveLength(1);
     expect(activityLogRepository.created.map((event) => event.action)).toEqual([
       "revision_cycle_opened",
       "status_changed",
     ]);
+
+    const openedMetadata = activityLogRepository.created[0]?.metadata;
+    expect(openedMetadata?.revisionId).toBe("revision-1");
+    expect(openedMetadata?.revisionNumber).toBe(1);
+    expect(openedMetadata?.copiedSuppliersCount).toBe(1);
   });
 
   it("bloqueia início de revisão quando status não é enviada", async () => {
     const proposalRepository = new FakeProposalRepository(buildProposal("em_elaboracao"));
+    const revisionRepository = new FakeRevisionRepository([buildRevision(0, "revision-0")]);
+    const proposalSupplierRepository = new FakeProposalSupplierRepository([]);
     const activityLogRepository = new FakeActivityLogRepository();
     const useCase = new StartProposalRevisionCycleUseCase(
       proposalRepository,
+      revisionRepository,
+      proposalSupplierRepository,
       activityLogRepository,
     );
 
@@ -154,6 +368,8 @@ describe("StartProposalRevisionCycleUseCase", () => {
 
   it("bloqueia início de revisão quando já existe ciclo pendente", async () => {
     const proposalRepository = new FakeProposalRepository(buildProposal("enviada"));
+    const revisionRepository = new FakeRevisionRepository([buildRevision(0, "revision-0")]);
+    const proposalSupplierRepository = new FakeProposalSupplierRepository([]);
     const activityLogRepository = new FakeActivityLogRepository([
       {
         id: "activity-1",
@@ -162,6 +378,8 @@ describe("StartProposalRevisionCycleUseCase", () => {
         action: "revision_cycle_opened",
         metadata: {
           cycleId: "cycle-1",
+          revisionId: "revision-1",
+          revisionNumber: 1,
           before: {
             scopeDescription: "Escopo original",
             dueDate: "2026-03-01",
@@ -174,6 +392,8 @@ describe("StartProposalRevisionCycleUseCase", () => {
     ]);
     const useCase = new StartProposalRevisionCycleUseCase(
       proposalRepository,
+      revisionRepository,
+      proposalSupplierRepository,
       activityLogRepository,
     );
 
@@ -185,4 +405,3 @@ describe("StartProposalRevisionCycleUseCase", () => {
     ).rejects.toThrow("Já existe um ciclo de revisão pendente");
   });
 });
-

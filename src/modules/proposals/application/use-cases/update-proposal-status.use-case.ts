@@ -17,6 +17,7 @@ export interface UpdateProposalStatusUseCaseInput {
   status: ProposalStatus;
   outcomeReason?: string | null;
   finalValueBrl?: number | null;
+  statusDate?: string | null;
   changedBy: string;
 }
 
@@ -46,6 +47,16 @@ export class UpdateProposalStatusUseCase
     }
 
     const normalizedOutcomeReason = input.outcomeReason?.trim() || null;
+    const normalizedStatusDate = input.statusDate?.trim() || null;
+    const statusSupportsDate = input.status === "enviada" || input.status === "ganha";
+
+    if (!statusSupportsDate && normalizedStatusDate) {
+      throw new ValidationError(
+        "Data de evento só pode ser informada para status enviada ou ganha",
+      );
+    }
+
+    const statusDate = statusSupportsDate ? normalizedStatusDate : null;
 
     if (
       !isValidProposalStatusTransition(current.status, input.status) &&
@@ -99,6 +110,7 @@ export class UpdateProposalStatusUseCase
           source: "manual",
           outcomeReason,
           finalValueBrl: input.finalValueBrl ?? null,
+          statusDate,
         },
         createdBy: input.changedBy,
       });

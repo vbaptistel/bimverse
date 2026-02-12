@@ -24,6 +24,7 @@ import type {
 import type {
   CreateRevisionRecordInput,
   RevisionRepositoryPort,
+  UpdateRevisionRecordInput,
 } from "@/modules/proposals/application/ports/revision-repository.port";
 import { CloseProposalRevisionUseCase } from "@/modules/proposals/application/use-cases/close-proposal-revision.use-case";
 import type { Proposal, ProposalRevision } from "@/modules/proposals/domain/proposal";
@@ -106,27 +107,44 @@ class FakeProposalRepository implements ProposalRepositoryPort {
 }
 
 class FakeRevisionRepository implements RevisionRepositoryPort {
-  lastCreatedInput: CreateRevisionRecordInput | null = null;
+  lastUpdatedInput: UpdateRevisionRecordInput | null = null;
+
+  private revision: ProposalRevision = {
+    id: "revision-2",
+    proposalId: "proposal-1",
+    revisionNumber: 2,
+    reason: null,
+    scopeChanges: null,
+    discountBrl: null,
+    discountPercent: null,
+    valueBeforeBrl: null,
+    valueAfterBrl: null,
+    notes: null,
+    createdBy: "user-1",
+    createdAt: new Date("2026-01-15T00:00:00.000Z"),
+  };
 
   async getNextRevisionNumber(): Promise<number> {
-    return 2;
+    return 3;
   }
 
-  async findById(): Promise<ProposalRevision | null> {
-    return null;
+  async findById(revisionId: string): Promise<ProposalRevision | null> {
+    return revisionId === this.revision.id ? this.revision : null;
   }
 
   async findManyByProposalId(): Promise<ProposalRevision[]> {
-    return [];
+    return [this.revision];
   }
 
-  async createRevision(input: CreateRevisionRecordInput): Promise<ProposalRevision> {
-    this.lastCreatedInput = input;
+  async createRevision(_input: CreateRevisionRecordInput): Promise<ProposalRevision> {
+    void _input;
+    throw new Error("not implemented");
+  }
 
-    return {
-      id: "revision-2",
-      proposalId: input.proposalId,
-      revisionNumber: input.revisionNumber,
+  async updateRevision(input: UpdateRevisionRecordInput): Promise<ProposalRevision> {
+    this.lastUpdatedInput = input;
+    this.revision = {
+      ...this.revision,
       reason: input.reason ?? null,
       scopeChanges: input.scopeChanges ?? null,
       discountBrl: input.discountBrl ?? null,
@@ -134,9 +152,13 @@ class FakeRevisionRepository implements RevisionRepositoryPort {
       valueBeforeBrl: input.valueBeforeBrl ?? null,
       valueAfterBrl: input.valueAfterBrl ?? null,
       notes: input.notes ?? null,
-      createdBy: input.createdBy,
-      createdAt: new Date(),
     };
+
+    return this.revision;
+  }
+
+  async deleteById(_revisionId: string): Promise<void> {
+    void _revisionId;
   }
 }
 
@@ -162,6 +184,10 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
 
   async findManyByProposalId(): Promise<Attachment[]> {
     return [];
+  }
+
+  async deleteManyByRevisionId(_revisionId: string): Promise<void> {
+    void _revisionId;
   }
 }
 
@@ -216,6 +242,8 @@ function buildOpenedCycleEvent(): ActivityLogEntry {
     action: "revision_cycle_opened",
     metadata: {
       cycleId: "cycle-1",
+      revisionId: "revision-2",
+      revisionNumber: 2,
       before: {
         scopeDescription: "Escopo original",
         dueDate: "2026-03-01",
@@ -233,7 +261,7 @@ function buildOpenedCycleEvent(): ActivityLogEntry {
 }
 
 describe("CloseProposalRevisionUseCase", () => {
-  it("fecha revisão pendente com criação de revisão, anexo e retorno para enviada", async () => {
+  it("fecha revisão pendente com atualização da revisão existente, anexo e retorno para enviada", async () => {
     const proposalRepository = new FakeProposalRepository(buildProposal("em_revisao"));
     const revisionRepository = new FakeRevisionRepository();
     const attachmentRepository = new FakeAttachmentRepository();
@@ -264,11 +292,13 @@ describe("CloseProposalRevisionUseCase", () => {
 
     expect(output.proposal.status).toBe("enviada");
     expect(output.revision.revisionNumber).toBe(2);
+    expect(output.revision.reason).toBe("Solicitação do cliente");
     expect(output.attachment.category).toBe("proposta_word");
     expect(activityLogRepository.created.map((event) => event.action)).toEqual([
       "revision_cycle_closed",
       "status_changed",
     ]);
+    expect(revisionRepository.lastUpdatedInput?.revisionId).toBe("revision-2");
   });
 
   it("calcula desconto automaticamente quando o valor da proposta reduz", async () => {
@@ -303,8 +333,8 @@ describe("CloseProposalRevisionUseCase", () => {
 
     expect(output.revision.discountBrl).toBe(100);
     expect(output.revision.discountPercent).toBe(10);
-    expect(revisionRepository.lastCreatedInput?.valueBeforeBrl).toBe(1000);
-    expect(revisionRepository.lastCreatedInput?.valueAfterBrl).toBe(900);
+    expect(revisionRepository.lastUpdatedInput?.valueBeforeBrl).toBe(1000);
+    expect(revisionRepository.lastUpdatedInput?.valueAfterBrl).toBe(900);
   });
 
   it("bloqueia fechamento quando proposta não está em revisão", async () => {
@@ -358,9 +388,9 @@ describe("CloseProposalRevisionUseCase", () => {
       useCase.execute({
         proposalId: "proposal-1",
         reason: "Solicitação do cliente",
-        fileName: "BV-EGIS-2026-BIM-001-R2.xlsx",
-        storagePath: "path/doc.xlsx",
-        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileName: "BV-EGIS-2026-BIM-001-R2.txt",
+        storagePath: "path/doc.txt",
+        mimeType: "text/plain",
         fileSizeBytes: 1024,
         closedBy: "user-2",
       }),

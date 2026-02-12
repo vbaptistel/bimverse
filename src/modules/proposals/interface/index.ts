@@ -9,6 +9,7 @@ export * from "@/modules/proposals/interface/actions/prepare-revision-document-u
 export * from "@/modules/proposals/interface/actions/start-proposal-revision-cycle.action";
 export * from "@/modules/proposals/interface/actions/unlink-proposal-supplier.action";
 export * from "@/modules/proposals/interface/actions/update-proposal-base.action";
+export * from "@/modules/proposals/interface/actions/update-proposal-supplier-link.action";
 export * from "@/modules/proposals/interface/actions/update-proposal-status.action";
 export * from "@/modules/proposals/interface/presenters/proposal.presenter";
 export * from "@/modules/proposals/interface/schemas/proposal.schema";

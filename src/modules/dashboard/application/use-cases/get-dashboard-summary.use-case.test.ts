@@ -31,6 +31,25 @@ class FakeDashboardRepository implements DashboardRepositoryPort {
           wonValueTotalBrl: 50000,
         },
       ],
+      valueTimelineByStatus: [
+        { month: "2025-10", status: "enviada", totalValueBrl: 30000 },
+        { month: "2025-10", status: "ganha", totalValueBrl: 15000 },
+        { month: "2025-11", status: "ganha", totalValueBrl: 35000 },
+      ],
+      valueTimelineByCustomer: [
+        {
+          month: "2025-10",
+          customerId: "customer-1",
+          customerName: "EGIS",
+          totalValueBrl: 45000,
+        },
+        {
+          month: "2025-11",
+          customerId: "customer-1",
+          customerName: "EGIS",
+          totalValueBrl: 35000,
+        },
+      ],
     };
   }
 }

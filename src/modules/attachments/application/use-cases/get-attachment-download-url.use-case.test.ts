@@ -38,6 +38,8 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
   async findManyByProposalId() {
     return [];
   }
+
+  async deleteManyByRevisionId() {}
 }
 
 class FakeStoragePort implements StoragePort {

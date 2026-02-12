@@ -12,6 +12,7 @@ import { PrepareRevisionDocumentUploadUseCase } from "@/modules/proposals/applic
 import { StartProposalRevisionCycleUseCase } from "@/modules/proposals/application/use-cases/start-proposal-revision-cycle.use-case";
 import { UnlinkProposalSupplierUseCase } from "@/modules/proposals/application/use-cases/unlink-proposal-supplier.use-case";
 import { UpdateProposalBaseUseCase } from "@/modules/proposals/application/use-cases/update-proposal-base.use-case";
+import { UpdateProposalSupplierLinkUseCase } from "@/modules/proposals/application/use-cases/update-proposal-supplier-link.use-case";
 import { UpdateProposalStatusUseCase } from "@/modules/proposals/application/use-cases/update-proposal-status.use-case";
 import { DrizzleActivityLogRepository } from "@/modules/proposals/infrastructure/repositories/drizzle-activity-log.repository";
 import { DrizzleProposalRepository } from "@/modules/proposals/infrastructure/repositories/drizzle-proposal.repository";
@@ -52,6 +53,8 @@ export function buildProposalsComposition() {
     ),
     startProposalRevisionCycleUseCase: new StartProposalRevisionCycleUseCase(
       proposalRepository,
+      revisionRepository,
+      proposalSupplierRepository,
       activityLogRepository,
     ),
     prepareRevisionDocumentUploadUseCase: new PrepareRevisionDocumentUploadUseCase(
@@ -68,6 +71,9 @@ export function buildProposalsComposition() {
     ),
     cancelProposalRevisionUseCase: new CancelProposalRevisionUseCase(
       proposalRepository,
+      revisionRepository,
+      proposalSupplierRepository,
+      attachmentRepository,
       activityLogRepository,
     ),
     linkProposalSupplierUseCase: new LinkProposalSupplierUseCase(
@@ -78,6 +84,14 @@ export function buildProposalsComposition() {
       activityLogRepository,
     ),
     unlinkProposalSupplierUseCase: new UnlinkProposalSupplierUseCase(
+      proposalRepository,
+      revisionRepository,
+      proposalSupplierRepository,
+      activityLogRepository,
+    ),
+    updateProposalSupplierLinkUseCase: new UpdateProposalSupplierLinkUseCase(
+      proposalRepository,
+      revisionRepository,
       proposalSupplierRepository,
       activityLogRepository,
     ),

@@ -15,6 +15,7 @@ import type { Proposal } from "@/modules/proposals/domain/proposal";
 import {
   customers,
   proposals,
+  proposalRevisions,
   proposalSequences,
 } from "@/shared/infrastructure/db/schema";
 import type { db } from "@/shared/infrastructure/db/client";
@@ -73,6 +74,7 @@ function toListRecord(
       name: string;
       slug: string;
     };
+    currentRevisionNumber: number | null;
   },
 ): ProposalListRecord {
   const proposal = toDomain(row.proposal);
@@ -80,6 +82,7 @@ function toListRecord(
   return {
     ...proposal,
     customer: row.customer,
+    currentRevisionNumber: row.currentRevisionNumber,
   };
 }
 
@@ -113,6 +116,11 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
           name: customers.name,
           slug: customers.slug,
         },
+        currentRevisionNumber: sql<number | null>`(
+          SELECT MAX(${proposalRevisions.revisionNumber})
+          FROM ${proposalRevisions}
+          WHERE ${proposalRevisions.proposalId} = ${proposals.id}
+        )`.as("current_revision_number"),
       })
       .from(proposals)
       .innerJoin(customers, eq(customers.id, proposals.customerId))
