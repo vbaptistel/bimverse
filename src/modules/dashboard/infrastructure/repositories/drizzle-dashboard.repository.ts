@@ -41,6 +41,8 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
       .select({
         status: proposals.status,
         count: sql<number>`COUNT(*)`,
+        totalValueBrl:
+          sql<string>`COALESCE(SUM(COALESCE(${proposals.finalValueBrl}, ${proposals.estimatedValueBrl})), 0)`,
       })
       .from(proposals)
       .groupBy(proposals.status);
@@ -65,25 +67,31 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
       .orderBy(sql`COUNT(${proposals.id}) DESC`)
       .limit(10);
 
-    const won = totals?.wonProposals ?? 0;
-    const lost = totals?.lostProposals ?? 0;
+    const won = toNumber(totals?.wonProposals);
+    const lost = toNumber(totals?.lostProposals);
     const base = won + lost;
 
     return {
-      totalProposals: totals?.totalProposals ?? 0,
+      totalProposals: toNumber(totals?.totalProposals),
       wonProposals: won,
       lostProposals: lost,
       conversionRate: base > 0 ? won / base : 0,
       estimatedValueTotalBrl: toNumber(totals?.estimatedValueTotalBrl),
       wonValueTotalBrl: toNumber(totals?.wonValueTotalBrl),
-      byStatus: byStatusRows as DashboardStatusMetric[],
+      byStatus: byStatusRows.map((row) => ({
+        status: row.status,
+        count: toNumber(row.count),
+        totalValueBrl: toNumber(row.totalValueBrl),
+      })) as DashboardStatusMetric[],
       byCompany: byCompanyRows.map((row) => {
-        const companyWon = row.wonProposals ?? 0;
-        const companyLost = row.lostProposals ?? 0;
+        const proposalCount = toNumber(row.proposalCount);
+        const companyWon = toNumber(row.wonProposals);
+        const companyLost = toNumber(row.lostProposals);
         const conversionBase = companyWon + companyLost;
 
         return {
           ...row,
+          proposalCount,
           wonProposals: companyWon,
           lostProposals: companyLost,
           conversionRate: conversionBase > 0 ? companyWon / conversionBase : 0,

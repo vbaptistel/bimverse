@@ -1,4 +1,5 @@
 import { SectionCards } from "@/components/dashboard/section-cards";
+import { StatusPieChart } from "@/components/dashboard/status-pie-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardSummaryAction } from "@/modules/dashboard/interface";
 import { formatCurrencyBrl } from "@/shared/domain/currency";
@@ -20,21 +21,41 @@ const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
   cancelada: "Cancelada",
 };
 
+const PROPOSAL_STATUS_COLORS: Record<ProposalStatus, string> = {
+  recebida: "#8EBEC3",
+  em_elaboracao: "#73AEB4",
+  enviada: "#5B9EA6",
+  em_revisao: "#4A8D97",
+  ganha: "#1B8087",
+  perdida: "#D47A88",
+  cancelada: "#A5B0B6",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const result = await getDashboardSummaryAction();
   const summary = result.success ? result.data : null;
 
-  const byStatusMap = new Map(
-    summary?.byStatus.map(({ status, count }) => [status, count]) ?? [],
-  );
+  const byStatusMap = new Map(summary?.byStatus.map((item) => [item.status, item]) ?? []);
   const byStatus = PROPOSAL_STATUSES.map((status) => ({
     status,
-    count: byStatusMap.get(status) ?? 0,
+    count: Number(byStatusMap.get(status)?.count ?? 0),
+    totalValueBrl: Number(byStatusMap.get(status)?.totalValueBrl ?? 0),
   }));
 
-  const maxStatusCount = Math.max(1, ...byStatus.map(({ count }) => count));
+  const byStatusWithAnyData = byStatus.filter(
+    ({ count, totalValueBrl }) => count > 0 || totalValueBrl > 0,
+  );
+  const statusSlices = byStatusWithAnyData
+    .filter(({ totalValueBrl }) => totalValueBrl > 0)
+    .map(({ status, count, totalValueBrl }) => ({
+      status,
+      label: PROPOSAL_STATUS_LABELS[status],
+      count,
+      valueBrl: totalValueBrl,
+      fill: PROPOSAL_STATUS_COLORS[status],
+    }));
   const rankedCompanies = summary?.byCompany.filter(({ proposalCount }) => proposalCount > 0) ?? [];
 
   const sectionCardsData = summary
@@ -97,34 +118,26 @@ export default async function DashboardPage() {
       },
     ];
 
-  const hasStatusData = byStatus.some(({ count }) => count > 0);
+  const hasStatusData = byStatusWithAnyData.length > 0;
+  const hasStatusValueData = statusSlices.length > 0;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
       <SectionCards cards={sectionCardsData} />
 
-      <div className="grid gap-4 lg:grid-cols-[0.66fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[0.6fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Funil por status</CardTitle>
-            <CardDescription>Distribuição atual das propostas por etapa.</CardDescription>
+            <CardTitle>Distribuição por status (R$)</CardTitle>
+            <CardDescription>Composição do pipeline por status em valor monetário.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {hasStatusData ? (
-              byStatus.map(({ status, count }) => (
-                <div key={status}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-foreground">{PROPOSAL_STATUS_LABELS[status]}</span>
-                    <span className="font-medium text-muted-foreground">{count}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted">
-                    <div
-                      className="h-2 rounded-full bg-primary"
-                      style={{ width: `${(count / maxStatusCount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))
+          <CardContent>
+            {hasStatusValueData ? (
+              <StatusPieChart data={statusSlices} />
+            ) : hasStatusData ? (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                Há propostas com valor zerado ou não informado; preencha valores para montar a pizza.
+              </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
                 Nenhuma proposta registrada ainda.

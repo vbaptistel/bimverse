@@ -16,8 +16,8 @@ class FakeDashboardRepository implements DashboardRepositoryPort {
       estimatedValueTotalBrl: 120000,
       wonValueTotalBrl: 50000,
       byStatus: [
-        { status: "enviada", count: 3 },
-        { status: "ganha", count: 4 },
+        { status: "enviada", count: 3, totalValueBrl: 45000 },
+        { status: "ganha", count: 4, totalValueBrl: 75000 },
       ],
       byCompany: [
         {

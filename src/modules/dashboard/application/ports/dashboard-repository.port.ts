@@ -1,6 +1,7 @@
 export interface DashboardStatusMetric {
   status: string;
   count: number;
+  totalValueBrl: number;
 }
 
 export interface DashboardCompanyMetric {
