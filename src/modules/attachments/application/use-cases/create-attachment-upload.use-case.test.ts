@@ -17,7 +17,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return null;
   }
 
-  async getCompanyById() {
+  async getCustomerById() {
     return null;
   }
 
@@ -42,7 +42,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
       proposalId: "proposal-1",
       proposalCode: "BV-EGIS-2026-BIM-001",
       year: 2026,
-      companySlug: "EGIS",
+      customerSlug: "EGIS",
     };
   }
 

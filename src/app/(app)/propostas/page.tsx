@@ -1,13 +1,15 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import type { Column, ColumnDef } from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Plus } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { CreateProposalForm } from "@/components/proposals/create-proposal-form";
 import { ListFiltersBar } from "@/components/shared/list-filters-bar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { DataTable } from "@/components/ui/data-table";
 import {
   type ProposalPresenter,
   listProposalsAction,
@@ -36,6 +38,34 @@ function toNullableText(value?: string | null): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function SortableHeader<TData>({
+  column,
+  label,
+}: {
+  column: Column<TData, unknown>;
+  label: string;
+}) {
+  const sortDirection = column.getIsSorted();
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="-ml-2 h-8 px-2"
+      onClick={() => column.toggleSorting(sortDirection === "asc")}
+    >
+      {label}
+      {sortDirection === "asc" ? (
+        <ArrowUp className="size-4" />
+      ) : sortDirection === "desc" ? (
+        <ArrowDown className="size-4" />
+      ) : (
+        <ArrowUpDown className="size-4" />
+      )}
+    </Button>
+  );
+}
+
 export default function ProposalsPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,6 +77,104 @@ export default function ProposalsPage() {
   const [proposals, setProposals] = useState<ProposalPresenter[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const isCreateModalVisible = isCreateModalOpen || searchParams.has("new");
+
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+      }),
+    [],
+  );
+
+  const columns = useMemo<ColumnDef<ProposalPresenter>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: ({ column }) => <SortableHeader column={column} label="Código" />,
+      },
+      {
+        id: "customerName",
+        accessorFn: (row) => row.customer?.name ?? "",
+        header: ({ column }) => <SortableHeader column={column} label="Cliente" />,
+        cell: ({ row }) => row.original.customer?.name ?? "—",
+      },
+      {
+        accessorKey: "projectName",
+        header: ({ column }) => <SortableHeader column={column} label="Projeto" />,
+      },
+      {
+        accessorKey: "status",
+        accessorFn: (row) => PROPOSAL_STATUS_LABELS[row.status],
+        header: ({ column }) => <SortableHeader column={column} label="Status" />,
+        cell: ({ row }) => PROPOSAL_STATUS_LABELS[row.original.status],
+      },
+      {
+        id: "dueDate",
+        accessorFn: (row) => row.dueDate,
+        header: ({ column }) => <SortableHeader column={column} label="Prazo" />,
+        sortingFn: (rowA, rowB, columnId) => {
+          const a = rowA.getValue<string | null>(columnId);
+          const b = rowB.getValue<string | null>(columnId);
+
+          if (!a && !b) {
+            return 0;
+          }
+          if (!a) {
+            return 1;
+          }
+          if (!b) {
+            return -1;
+          }
+
+          return new Date(a).getTime() - new Date(b).getTime();
+        },
+        cell: ({ row }) =>
+          row.original.dueDate
+            ? dateFormatter.format(new Date(row.original.dueDate))
+            : "—",
+      },
+      {
+        id: "value",
+        accessorFn: (row) => row.finalValueBrl ?? row.estimatedValueBrl,
+        header: ({ column }) => <SortableHeader column={column} label="Valor" />,
+        sortingFn: (rowA, rowB, columnId) => {
+          const a = rowA.getValue<number | null>(columnId);
+          const b = rowB.getValue<number | null>(columnId);
+
+          if (a === null && b === null) {
+            return 0;
+          }
+          if (a === null) {
+            return 1;
+          }
+          if (b === null) {
+            return -1;
+          }
+
+          return a - b;
+        },
+        cell: ({ row }) => {
+          const value = row.original.finalValueBrl ?? row.original.estimatedValueBrl;
+          return <span className="text-muted-foreground">{value !== null ? formatCurrencyBrl(value) : "—"}</span>;
+        },
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => router.push(`/propostas/${row.original.id}`)}
+          >
+            <Eye className="size-3.5" />
+          </Button>
+        ),
+      },
+    ],
+    [dateFormatter, router],
+  );
 
   const refreshProposals = async (
     nextSearch: string,
@@ -145,54 +273,15 @@ export default function ProposalsPage() {
       />
 
       <Card>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="px-2 py-2">Código</th>
-                <th className="px-2 py-2">Projeto</th>
-                <th className="px-2 py-2">Status</th>
-                <th className="px-2 py-2">Valor</th>
-                <th className="px-2 py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {proposals.length === 0 ? (
-                <tr className="border-b border-border">
-                  <td className="px-2 py-5 text-muted-foreground" colSpan={5}>
-                    {isPending
-                      ? "Carregando propostas..."
-                      : "Nenhuma proposta cadastrada."}
-                  </td>
-                </tr>
-              ) : (
-                proposals.map((proposal) => (
-                  <tr key={proposal.id} className="border-b border-border">
-                    <td className="px-2 py-3 font-mono text-xs">{proposal.code}</td>
-                    <td className="px-2 py-3">{proposal.projectName}</td>
-                    <td className="px-2 py-3">{PROPOSAL_STATUS_LABELS[proposal.status]}</td>
-                    <td className="px-2 py-3 text-muted-foreground">
-                      {proposal.finalValueBrl !== null
-                        ? formatCurrencyBrl(proposal.finalValueBrl)
-                        : proposal.estimatedValueBrl !== null
-                          ? formatCurrencyBrl(proposal.estimatedValueBrl)
-                          : "—"}
-                    </td>
-                    <td className="px-2 py-3">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => router.push(`/propostas/${proposal.id}`)}
-                      >
-                        Abrir
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <CardContent>
+          <DataTable
+            columns={columns}
+            data={proposals}
+            tableClassName="min-w-[760px] text-left text-sm"
+            isLoading={isPending}
+            loadingMessage="Carregando propostas..."
+            emptyMessage="Nenhuma proposta cadastrada."
+          />
         </CardContent>
       </Card>
 

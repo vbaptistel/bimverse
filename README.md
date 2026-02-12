@@ -7,7 +7,7 @@ Plataforma web para gestão do pipeline comercial da Bimverse, com foco em propo
 A aplicação centraliza o fluxo comercial em uma única interface:
 
 - dashboard com indicadores de propostas e conversão;
-- cadastro e gestão de empresas;
+- cadastro e gestão de clientes;
 - cadastro e gestão de fornecedores;
 - criação e acompanhamento de propostas por status;
 - ciclo de revisões com histórico;
@@ -50,7 +50,7 @@ src/
   composition/        # composição de dependências por módulo
   modules/
     attachments/
-    companies/
+    customers/
     dashboard/
     proposals/
     suppliers/
@@ -132,7 +132,7 @@ Observação: o bypass é útil para contexto de autenticação no backend, mas 
 ## Rotas principais
 
 - `/dashboard`
-- `/empresas`
+- `/clientes`
 - `/propostas`
 - `/propostas/[id]`
 - `/fornecedores`
@@ -144,7 +144,7 @@ Observação: o bypass é útil para contexto de autenticação no backend, mas 
 Schema central em `src/shared/infrastructure/db/schema.ts`, incluindo:
 
 - perfis (`profiles`)
-- empresas (`companies`)
+- clientes (`customers`)
 - propostas e revisões (`proposals`, `proposal_revisions`)
 - fornecedores (`suppliers`, `proposal_suppliers`)
 - anexos (`attachments`)

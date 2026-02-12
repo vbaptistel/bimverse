@@ -19,10 +19,10 @@ class FakeDashboardRepository implements DashboardRepositoryPort {
         { status: "enviada", count: 3, totalValueBrl: 45000 },
         { status: "ganha", count: 4, totalValueBrl: 75000 },
       ],
-      byCompany: [
+      byCustomer: [
         {
-          companyId: "company-1",
-          companyName: "EGIS",
+          customerId: "customer-1",
+          customerName: "EGIS",
           proposalCount: 5,
           wonProposals: 3,
           lostProposals: 1,
@@ -42,6 +42,6 @@ describe("GetDashboardSummaryUseCase", () => {
     const summary = await useCase.execute();
 
     expect(summary.totalProposals).toBe(10);
-    expect(summary.byCompany[0]?.companyName).toBe("EGIS");
+    expect(summary.byCustomer[0]?.customerName).toBe("EGIS");
   });
 });

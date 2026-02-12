@@ -24,7 +24,7 @@ export interface ListFiltersBarProps {
   onSearchChange: (value: string) => void;
   /** Chamado ao pressionar Enter no campo de busca */
   onSearchApply: () => void;
-  /** Ação principal (ex.: "Nova empresa", "Nova proposta") */
+  /** Ação principal (ex.: "Novo cliente", "Nova proposta") */
   primaryAction: {
     label: string;
     onClick: () => void;

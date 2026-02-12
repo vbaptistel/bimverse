@@ -23,7 +23,7 @@ import {
 
 const navMain: { title: string; url: string; icon: LucideIcon; }[] = [
   { title: "Dashboard", url: "/dashboard", icon: Gauge },
-  { title: "Empresas", url: "/empresas", icon: Building2 },
+  { title: "Clientes", url: "/clientes", icon: Building2 },
   { title: "Propostas", url: "/propostas", icon: FileSpreadsheet },
   { title: "Fornecedores", url: "/fornecedores", icon: BriefcaseBusiness },
 ];

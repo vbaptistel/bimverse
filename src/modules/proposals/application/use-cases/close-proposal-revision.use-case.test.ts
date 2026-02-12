@@ -7,7 +7,7 @@ import type {
 import type { StoragePort } from "@/modules/attachments/application/ports/storage.port";
 import type { Attachment } from "@/modules/attachments/domain/attachment";
 import type {
-  CompanyLookup,
+  CustomerLookup,
   CreateProposalRecordInput,
   ListProposalsFilters,
   ProposalDetailRecord,
@@ -31,7 +31,7 @@ import type { Proposal, ProposalRevision } from "@/modules/proposals/domain/prop
 function buildProposal(status: Proposal["status"] = "em_revisao"): Proposal {
   return {
     id: "proposal-1",
-    companyId: "company-1",
+    customerId: "customer-1",
     code: "BV-EGIS-2026-BIM-001",
     seqNumber: 1,
     year: 2026,
@@ -52,7 +52,7 @@ function buildProposal(status: Proposal["status"] = "em_revisao"): Proposal {
 class FakeProposalRepository implements ProposalRepositoryPort {
   constructor(private proposal: Proposal) {}
 
-  async getCompanyById(): Promise<CompanyLookup | null> {
+  async getCustomerById(): Promise<CustomerLookup | null> {
     return null;
   }
 
@@ -88,7 +88,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
       proposalId: "proposal-1",
       proposalCode: "BV-EGIS-2026-BIM-001",
       year: 2026,
-      companySlug: "egis",
+      customerSlug: "egis",
     };
   }
 

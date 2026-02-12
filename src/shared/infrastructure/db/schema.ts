@@ -37,7 +37,7 @@ export const attachmentCategoryEnum = pgEnum("attachment_category", [
   "outro",
 ]);
 
-export const companyStatusEnum = pgEnum("company_status", [
+export const customerStatusEnum = pgEnum("customer_status", [
   "potencial",
   "em_negociacao",
   "ativa",
@@ -54,25 +54,25 @@ export const profiles = pgTable("profiles", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const companies = pgTable(
-  "companies",
+export const customers = pgTable(
+  "customers",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     cnpj: text("cnpj"),
     notes: text("notes"),
-    status: companyStatusEnum("status").notNull().default("ativa"),
+    status: customerStatusEnum("status").notNull().default("ativa"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("companies_slug_ux").on(table.slug)],
+  (table) => [uniqueIndex("customers_slug_ux").on(table.slug)],
 );
 
 export const proposalSequences = pgTable("proposal_sequences", {
-  companyId: uuid("company_id")
+  customerId: uuid("customer_id")
     .notNull()
-    .references(() => companies.id, { onDelete: "cascade" })
+    .references(() => customers.id, { onDelete: "cascade" })
     .primaryKey(),
   nextSeq: integer("next_seq").notNull().default(1),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -82,9 +82,9 @@ export const proposals = pgTable(
   "proposals",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    companyId: uuid("company_id")
+    customerId: uuid("customer_id")
       .notNull()
-      .references(() => companies.id, { onDelete: "restrict" }),
+      .references(() => customers.id, { onDelete: "restrict" }),
     code: text("code").notNull(),
     seqNumber: integer("seq_number").notNull(),
     year: integer("year").notNull(),
@@ -108,8 +108,8 @@ export const proposals = pgTable(
   },
   (table) => [
     uniqueIndex("proposals_code_ux").on(table.code),
-    uniqueIndex("proposals_company_year_seq_ux").on(
-      table.companyId,
+    uniqueIndex("proposals_customer_year_seq_ux").on(
+      table.customerId,
       table.year,
       table.seqNumber,
     ),
@@ -231,17 +231,17 @@ export const activityLog = pgTable("activity_log", {
   ),
 ]);
 
-export const companiesToSuppliers = pgTable(
-  "companies_to_suppliers",
+export const customersToSuppliers = pgTable(
+  "customers_to_suppliers",
   {
-    companyId: uuid("company_id")
+    customerId: uuid("customer_id")
       .notNull()
-      .references(() => companies.id, { onDelete: "cascade" }),
+      .references(() => customers.id, { onDelete: "cascade" }),
     supplierId: uuid("supplier_id")
       .notNull()
       .references(() => suppliers.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.companyId, table.supplierId] })],
+  (table) => [primaryKey({ columns: [table.customerId, table.supplierId] })],
 );
 
 export type ProposalRow = typeof proposals.$inferSelect;

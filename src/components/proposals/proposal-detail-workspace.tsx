@@ -93,16 +93,23 @@ const PROPOSAL_STATUS_BADGE_VARIANTS: Record<
   cancelada: "destructive",
 };
 
-const MANUAL_STATUS_OPTIONS = [
-  "recebida",
-  "em_elaboracao",
-  "enviada",
-  "ganha",
-  "perdida",
-  "cancelada",
-] as const;
+type ManualProposalStatus =
+  | "recebida"
+  | "em_elaboracao"
+  | "enviada"
+  | "ganha"
+  | "perdida"
+  | "cancelada";
 
-type ManualProposalStatus = (typeof MANUAL_STATUS_OPTIONS)[number];
+const MANUAL_STATUS_TRANSITIONS: Record<ProposalStatus, ManualProposalStatus[]> = {
+  recebida: ["em_elaboracao", "cancelada"],
+  em_elaboracao: ["enviada", "cancelada"],
+  enviada: ["ganha", "perdida", "cancelada"],
+  em_revisao: [],
+  ganha: [],
+  perdida: [],
+  cancelada: [],
+};
 
 interface ProposalDetailWorkspaceProps {
   detail: ProposalDetailPresenter;
@@ -314,6 +321,18 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       ),
     [detail.revisions],
   );
+  const availableStatusOptions = useMemo<ProposalStatus[]>(() => {
+    if (isInReview) {
+      return ["em_revisao"];
+    }
+
+    return [
+      detail.proposal.status,
+      ...MANUAL_STATUS_TRANSITIONS[detail.proposal.status].filter(
+        (status) => status !== detail.proposal.status,
+      ),
+    ];
+  }, [detail.proposal.status, isInReview]);
   const selectedStatusInModal = statusForm.watch("status");
   const statusRequiresReasonInModal =
     selectedStatusInModal === "perdida" || selectedStatusInModal === "cancelada";
@@ -750,7 +769,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               <Badge variant="outline">R{latestRevisionNumber}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {detail.proposal.companyName} | {detail.proposal.projectName}
+              {detail.proposal.customerName} | {detail.proposal.projectName}
             </p>
           </div>
 
@@ -956,7 +975,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             <div className="space-y-1">
               <CardTitle>Dados da proposta</CardTitle>
               <CardDescription>
-                Empresa: {detail.proposal.companyName} | Ano: {detail.proposal.year} |
+                Cliente: {detail.proposal.customerName} | Ano: {detail.proposal.year} |
                 Criada em {dateTimeFormatter.format(new Date(detail.proposal.createdAt))}
               </CardDescription>
             </div>
@@ -1363,12 +1382,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {isInReview ? (
-                        <SelectItem value="em_revisao" disabled>
-                          {PROPOSAL_STATUS_LABELS.em_revisao}
-                        </SelectItem>
-                      ) : null}
-                      {MANUAL_STATUS_OPTIONS.map((status) => (
+                      {availableStatusOptions.map((status) => (
                         <SelectItem key={status} value={status}>
                           {PROPOSAL_STATUS_LABELS[status]}
                         </SelectItem>

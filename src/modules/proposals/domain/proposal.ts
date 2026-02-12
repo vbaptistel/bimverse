@@ -2,7 +2,7 @@ import type { ProposalStatus } from "@/shared/domain/types";
 
 export interface Proposal {
   id: string;
-  companyId: string;
+  customerId: string;
   code: string;
   seqNumber: number;
   year: number;

@@ -6,7 +6,7 @@ import type { UseCase } from "@/shared/application/use-case";
 import { NotFoundError } from "@/shared/domain/errors";
 
 export interface CreateProposalInput {
-  companyId: string;
+  customerId: string;
   year: number;
   invitationCode?: string | null;
   projectName: string;
@@ -30,24 +30,24 @@ export class CreateProposalUseCase
   ) {}
 
   async execute(input: CreateProposalInput): Promise<CreateProposalOutput> {
-    const company = await this.proposalRepository.getCompanyById(input.companyId);
-    if (!company) {
-      throw new NotFoundError("Empresa não encontrada");
+    const customer = await this.proposalRepository.getCustomerById(input.customerId);
+    if (!customer) {
+      throw new NotFoundError("Cliente não encontrado");
     }
 
     const sequence = await this.proposalRepository.allocateNextSequence(
-      company.id,
+      customer.id,
       input.year,
     );
 
     const code = buildProposalCode({
-      companySlug: company.slug,
+      customerSlug: customer.slug,
       year: input.year,
       sequence,
     });
 
     const proposal = await this.proposalRepository.createProposal({
-      companyId: input.companyId,
+      customerId: input.customerId,
       code,
       seqNumber: sequence,
       year: input.year,

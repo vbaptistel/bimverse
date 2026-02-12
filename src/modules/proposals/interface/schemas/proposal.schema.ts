@@ -9,7 +9,7 @@ export const listProposalsSchema = z.object({
 });
 
 export const createProposalSchema = z.object({
-  companyId: z.string().uuid(),
+  customerId: z.string().uuid(),
   year: z.number().int().min(2000).max(2100),
   invitationCode: z.string().trim().max(120).optional().nullable(),
   projectName: z.string().trim().min(3).max(220),

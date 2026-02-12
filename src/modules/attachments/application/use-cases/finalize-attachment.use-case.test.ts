@@ -18,7 +18,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return null;
   }
 
-  async getCompanyById() {
+  async getCustomerById() {
     return null;
   }
 
@@ -37,7 +37,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
   async getProposalById(): Promise<Proposal | null> {
     return {
       id: "proposal-1",
-      companyId: "company-1",
+      customerId: "customer-1",
       code: "BV-EGIS-2026-BIM-001",
       seqNumber: 1,
       year: 2026,

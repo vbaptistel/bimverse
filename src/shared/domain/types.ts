@@ -17,7 +17,7 @@ export type AttachmentCategory =
   | "planilha_custos"
   | "outro";
 
-export const COMPANY_STATUSES = [
+export const CUSTOMER_STATUSES = [
   "potencial",
   "em_negociacao",
   "ativa",
@@ -25,7 +25,7 @@ export const COMPANY_STATUSES = [
   "bloqueada",
 ] as const;
 
-export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
+export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number];
 
 export const PROPOSAL_STATUSES: ProposalStatus[] = [
   "recebida",

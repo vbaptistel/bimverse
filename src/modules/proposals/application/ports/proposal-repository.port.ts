@@ -1,14 +1,14 @@
 import type { Proposal } from "@/modules/proposals/domain/proposal";
 import type { ProposalStatus } from "@/shared/domain/types";
 
-export interface CompanyLookup {
+export interface CustomerLookup {
   id: string;
   slug: string;
 }
 
 export interface ProposalStorageContext {
   proposalId: string;
-  companySlug: string;
+  customerSlug: string;
   proposalCode: string;
   year: number;
 }
@@ -19,12 +19,22 @@ export interface ListProposalsFilters {
 }
 
 export interface ProposalDetailRecord extends Proposal {
-  companyName: string;
-  companySlug: string;
+  customerName: string;
+  customerSlug: string;
+}
+
+export interface ProposalCustomerRecord {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface ProposalListRecord extends Proposal {
+  customer?: ProposalCustomerRecord;
 }
 
 export interface CreateProposalRecordInput {
-  companyId: string;
+  customerId: string;
   code: string;
   seqNumber: number;
   year: number;
@@ -55,10 +65,10 @@ export interface UpdateProposalBaseFieldsInput {
 }
 
 export interface ProposalRepositoryPort {
-  getCompanyById(companyId: string): Promise<CompanyLookup | null>;
-  findMany(filters?: ListProposalsFilters): Promise<Proposal[]>;
+  getCustomerById(customerId: string): Promise<CustomerLookup | null>;
+  findMany(filters?: ListProposalsFilters): Promise<ProposalListRecord[]>;
   getDetailById(proposalId: string): Promise<ProposalDetailRecord | null>;
-  allocateNextSequence(companyId: string, year: number): Promise<number>;
+  allocateNextSequence(customerId: string, year: number): Promise<number>;
   createProposal(input: CreateProposalRecordInput): Promise<Proposal>;
   updateBaseFields(input: UpdateProposalBaseFieldsInput): Promise<Proposal>;
   getProposalById(proposalId: string): Promise<Proposal | null>;

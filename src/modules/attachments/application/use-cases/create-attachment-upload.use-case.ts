@@ -69,7 +69,7 @@ export class CreateAttachmentUploadUseCase
     const revisionFolder = input.revisionId ? `R${input.revisionId}` : "R0";
     const uniquePrefix = randomUUID();
     const path = [
-      proposalContext.companySlug,
+      proposalContext.customerSlug,
       String(proposalContext.year),
       proposalContext.proposalCode,
       "revisions",

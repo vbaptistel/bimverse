@@ -24,9 +24,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  type CompanyPresenter,
-  listCompaniesAction,
-} from "@/modules/companies/interface";
+  type CustomerPresenter,
+  listCustomersAction,
+} from "@/modules/customers/interface";
 import { createProposalAction } from "@/modules/proposals/interface/actions/create-proposal.action";
 import {
   createProposalSchema,
@@ -45,7 +45,7 @@ interface CreateProposalFormProps {
 
 function buildDefaultValues(year: number): CreateProposalSchema {
   return {
-    companyId: "",
+    customerId: "",
     year,
     invitationCode: "",
     projectName: "",
@@ -61,9 +61,9 @@ export function CreateProposalForm({
   onCreated,
 }: CreateProposalFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [isLoadingCompanies, startLoadingCompanies] = useTransition();
+  const [isLoadingCustomers, startLoadingCustomers] = useTransition();
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [companies, setCompanies] = useState<CompanyPresenter[]>([]);
+  const [customers, setCustomers] = useState<CustomerPresenter[]>([]);
 
   const defaultYear = useMemo(() => new Date().getFullYear(), []);
 
@@ -79,8 +79,8 @@ export function CreateProposalForm({
 
     let isActive = true;
 
-    startLoadingCompanies(async () => {
-      const result = await listCompaniesAction();
+    startLoadingCustomers(async () => {
+      const result = await listCustomersAction();
 
       if (!isActive) {
         return;
@@ -91,13 +91,13 @@ export function CreateProposalForm({
         return;
       }
 
-      setCompanies(result.data);
+      setCustomers(result.data);
     });
 
     return () => {
       isActive = false;
     };
-  }, [open, startLoadingCompanies]);
+  }, [open, startLoadingCustomers]);
 
   const closeAndReset = () => {
     setFeedback(null);
@@ -143,45 +143,45 @@ export function CreateProposalForm({
         <DialogHeader>
           <DialogTitle>Nova Proposta</DialogTitle>
           <DialogDescription>
-            Cadastre uma nova proposta para uma empresa.
+            Cadastre uma nova proposta para um cliente.
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={onSubmit}>
           <div className="grid gap-2 w-full">
-            <Label htmlFor="companyId">Empresa</Label>
+            <Label htmlFor="customerId">Cliente</Label>
             <Controller
-              name="companyId"
+              name="customerId"
               control={form.control}
               render={({ field }) => (
                 <Select
                   value={field.value || undefined}
                   onValueChange={field.onChange}
-                  disabled={isLoadingCompanies || companies.length === 0}
+                  disabled={isLoadingCustomers || customers.length === 0}
                 >
-                  <SelectTrigger id="companyId" className="h-9 w-full">
+                  <SelectTrigger id="customerId" className="h-9 w-full">
                     <SelectValue
                       placeholder={
-                        isLoadingCompanies
-                          ? "Carregando empresas..."
-                          : companies.length === 0
-                            ? "Nenhuma empresa cadastrada"
-                            : "Selecione uma empresa"
+                        isLoadingCustomers
+                          ? "Carregando clientes..."
+                          : customers.length === 0
+                            ? "Nenhum cliente cadastrado"
+                            : "Selecione um cliente"
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             />
-            {form.formState.errors.companyId ? (
+            {form.formState.errors.customerId ? (
               <p className="text-xs text-destructive">
-                {form.formState.errors.companyId.message}
+                {form.formState.errors.customerId.message}
               </p>
             ) : null}
           </div>
@@ -266,7 +266,7 @@ export function CreateProposalForm({
             </Button>
             <Button
               type="submit"
-              disabled={isPending || isLoadingCompanies || companies.length === 0}
+              disabled={isPending || isLoadingCustomers || customers.length === 0}
             >
               {isPending ? "Criando..." : "Criar proposta"}
             </Button>

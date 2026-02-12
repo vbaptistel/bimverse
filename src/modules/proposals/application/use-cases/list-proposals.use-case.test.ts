@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  CompanyLookup,
+  CustomerLookup,
   CreateProposalRecordInput,
   ListProposalsFilters,
   ProposalRepositoryPort,
@@ -12,7 +12,7 @@ import { ListProposalsUseCase } from "@/modules/proposals/application/use-cases/
 import type { Proposal } from "@/modules/proposals/domain/proposal";
 
 class FakeProposalRepository implements ProposalRepositoryPort {
-  async getCompanyById(): Promise<CompanyLookup | null> {
+  async getCustomerById(): Promise<CustomerLookup | null> {
     return null;
   }
 
@@ -26,7 +26,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return [
       {
         id: "proposal-1",
-        companyId: "company-1",
+        customerId: "customer-1",
         code: "BV-TEST-2026-BIM-001",
         seqNumber: 1,
         year: 2026,

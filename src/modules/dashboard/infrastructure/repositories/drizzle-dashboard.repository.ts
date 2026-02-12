@@ -1,12 +1,12 @@
 import { eq, sql } from "drizzle-orm";
 
 import type {
-  DashboardCompanyMetric,
+  DashboardCustomerMetric,
   DashboardRepositoryPort,
   DashboardStatusMetric,
   DashboardSummary,
 } from "@/modules/dashboard/application/ports/dashboard-repository.port";
-import { companies, proposals } from "@/shared/infrastructure/db/schema";
+import { customers, proposals } from "@/shared/infrastructure/db/schema";
 import type { db } from "@/shared/infrastructure/db/client";
 
 type Database = typeof db;
@@ -47,10 +47,10 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
       .from(proposals)
       .groupBy(proposals.status);
 
-    const byCompanyRows = await this.database
+    const byCustomerRows = await this.database
       .select({
-        companyId: companies.id,
-        companyName: companies.name,
+        customerId: customers.id,
+        customerName: customers.name,
         proposalCount: sql<number>`COUNT(${proposals.id})`,
         wonProposals:
           sql<number>`COUNT(${proposals.id}) FILTER (WHERE ${proposals.status} = 'ganha')`,
@@ -61,9 +61,9 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
         wonValueTotalBrl:
           sql<string>`COALESCE(SUM(COALESCE(${proposals.finalValueBrl}, ${proposals.estimatedValueBrl})) FILTER (WHERE ${proposals.status} = 'ganha'), 0)`,
       })
-      .from(companies)
-      .leftJoin(proposals, eq(proposals.companyId, companies.id))
-      .groupBy(companies.id, companies.name)
+      .from(customers)
+      .leftJoin(proposals, eq(proposals.customerId, customers.id))
+      .groupBy(customers.id, customers.name)
       .orderBy(sql`COUNT(${proposals.id}) DESC`)
       .limit(10);
 
@@ -83,22 +83,22 @@ export class DrizzleDashboardRepository implements DashboardRepositoryPort {
         count: toNumber(row.count),
         totalValueBrl: toNumber(row.totalValueBrl),
       })) as DashboardStatusMetric[],
-      byCompany: byCompanyRows.map((row) => {
+      byCustomer: byCustomerRows.map((row) => {
         const proposalCount = toNumber(row.proposalCount);
-        const companyWon = toNumber(row.wonProposals);
-        const companyLost = toNumber(row.lostProposals);
-        const conversionBase = companyWon + companyLost;
+        const customerWon = toNumber(row.wonProposals);
+        const customerLost = toNumber(row.lostProposals);
+        const conversionBase = customerWon + customerLost;
 
         return {
           ...row,
           proposalCount,
-          wonProposals: companyWon,
-          lostProposals: companyLost,
-          conversionRate: conversionBase > 0 ? companyWon / conversionBase : 0,
+          wonProposals: customerWon,
+          lostProposals: customerLost,
+          conversionRate: conversionBase > 0 ? customerWon / conversionBase : 0,
           totalEstimatedValueBrl: toNumber(row.totalEstimatedValueBrl),
           wonValueTotalBrl: toNumber(row.wonValueTotalBrl),
         };
-      }) as DashboardCompanyMetric[],
+      }) as DashboardCustomerMetric[],
     };
   }
 }

@@ -1,18 +1,18 @@
 import type {
   ListProposalsFilters,
+  ProposalListRecord,
   ProposalRepositoryPort,
 } from "@/modules/proposals/application/ports/proposal-repository.port";
-import type { Proposal } from "@/modules/proposals/domain/proposal";
 import type { UseCase } from "@/shared/application/use-case";
 
 export type ListProposalsInput = ListProposalsFilters;
 
 export class ListProposalsUseCase
-  implements UseCase<ListProposalsInput | void, Proposal[]>
+  implements UseCase<ListProposalsInput | void, ProposalListRecord[]>
 {
   constructor(private readonly proposalRepository: ProposalRepositoryPort) {}
 
-  async execute(input?: ListProposalsInput): Promise<Proposal[]> {
+  async execute(input?: ListProposalsInput): Promise<ProposalListRecord[]> {
     return this.proposalRepository.findMany(input ?? {});
   }
 }

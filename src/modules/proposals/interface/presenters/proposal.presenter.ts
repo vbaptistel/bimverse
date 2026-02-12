@@ -6,13 +6,16 @@ import type {
 } from "@/modules/proposals/application/use-cases/get-proposal-detail.use-case";
 import type { PendingRevisionCycle } from "@/modules/proposals/application/use-cases/revision-cycle.utils";
 import type { ProposalSupplierLink } from "@/modules/proposals/application/ports/proposal-supplier-repository.port";
-import type { ProposalDetailRecord } from "@/modules/proposals/application/ports/proposal-repository.port";
+import type {
+  ProposalDetailRecord,
+  ProposalListRecord,
+} from "@/modules/proposals/application/ports/proposal-repository.port";
 import type { Supplier } from "@/modules/suppliers/application/ports/supplier-repository.port";
 import type { ProposalStatus } from "@/shared/domain/types";
 
 export interface ProposalPresenter {
   id: string;
-  companyId: string;
+  customerId: string;
   code: string;
   seqNumber: number;
   year: number;
@@ -26,6 +29,11 @@ export interface ProposalPresenter {
   outcomeReason: string | null;
   createdAt: string;
   updatedAt: string;
+  customer: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 }
 
 export interface ProposalRevisionPresenter {
@@ -42,10 +50,12 @@ export interface ProposalRevisionPresenter {
   createdAt: string;
 }
 
-export function presentProposal(proposal: Proposal): ProposalPresenter {
+export function presentProposal(
+  proposal: Proposal | ProposalListRecord,
+): ProposalPresenter {
   return {
     id: proposal.id,
-    companyId: proposal.companyId,
+    customerId: proposal.customerId,
     code: proposal.code,
     seqNumber: proposal.seqNumber,
     year: proposal.year,
@@ -59,6 +69,7 @@ export function presentProposal(proposal: Proposal): ProposalPresenter {
     outcomeReason: proposal.outcomeReason,
     createdAt: proposal.createdAt.toISOString(),
     updatedAt: proposal.updatedAt.toISOString(),
+    customer: "customer" in proposal && proposal.customer ? proposal.customer : null,
   };
 }
 
@@ -214,8 +225,8 @@ function presentPendingRevisionCycle(
 
 export interface ProposalDetailPresenter {
   proposal: ProposalPresenter & {
-    companyName: string;
-    companySlug: string;
+    customerName: string;
+    customerSlug: string;
   };
   currentValueBrl: number | null;
   revisions: ProposalRevisionPresenter[];
@@ -232,8 +243,8 @@ function presentProposalDetailHeader(
 ): ProposalDetailPresenter["proposal"] {
   return {
     ...presentProposal(proposal),
-    companyName: proposal.companyName,
-    companySlug: proposal.companySlug,
+    customerName: proposal.customerName,
+    customerSlug: proposal.customerSlug,
   };
 }
 

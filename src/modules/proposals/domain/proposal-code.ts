@@ -1,12 +1,12 @@
 import { ValidationError } from "@/shared/domain/errors";
 
 interface ProposalCodeParams {
-  companySlug: string;
+  customerSlug: string;
   year: number;
   sequence: number;
 }
 
-export function normalizeCompanySlug(value: string): string {
+export function normalizeCustomerSlug(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -15,7 +15,7 @@ export function normalizeCompanySlug(value: string): string {
 }
 
 export function buildProposalCode({
-  companySlug,
+  customerSlug,
   year,
   sequence,
 }: ProposalCodeParams): string {
@@ -27,9 +27,9 @@ export function buildProposalCode({
     throw new ValidationError("Sequencial da proposta inválido");
   }
 
-  const normalizedSlug = normalizeCompanySlug(companySlug);
+  const normalizedSlug = normalizeCustomerSlug(customerSlug);
   if (!normalizedSlug) {
-    throw new ValidationError("Slug da empresa inválido");
+    throw new ValidationError("Slug do cliente inválido");
   }
 
   const paddedSequence = String(sequence).padStart(3, "0");

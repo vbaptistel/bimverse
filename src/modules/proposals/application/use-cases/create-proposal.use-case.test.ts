@@ -17,8 +17,8 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return null;
   }
 
-  async getCompanyById() {
-    return { id: "company-1", slug: "EGIS" };
+  async getCustomerById() {
+    return { id: "customer-1", slug: "EGIS" };
   }
 
   async allocateNextSequence() {
@@ -28,7 +28,7 @@ class FakeProposalRepository implements ProposalRepositoryPort {
   async createProposal(): Promise<Proposal> {
     return {
       id: "proposal-1",
-      companyId: "company-1",
+      customerId: "customer-1",
       code: "BV-EGIS-2026-BIM-012",
       seqNumber: 12,
       year: 2026,
@@ -102,7 +102,7 @@ describe("CreateProposalUseCase", () => {
     );
 
     const output = await useCase.execute({
-      companyId: "company-1",
+      customerId: "customer-1",
       year: 2026,
       projectName: "Projeto teste",
       scopeDescription: "Escopo teste",

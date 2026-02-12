@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  CompanyLookup,
+  CustomerLookup,
   CreateProposalRecordInput,
   ListProposalsFilters,
   ProposalDetailRecord,
@@ -21,7 +21,7 @@ import type { Proposal } from "@/modules/proposals/domain/proposal";
 function buildProposal(status: Proposal["status"] = "enviada"): Proposal {
   return {
     id: "proposal-1",
-    companyId: "company-1",
+    customerId: "customer-1",
     code: "BV-EGIS-2026-BIM-001",
     seqNumber: 1,
     year: 2026,
@@ -42,7 +42,7 @@ function buildProposal(status: Proposal["status"] = "enviada"): Proposal {
 class FakeProposalRepository implements ProposalRepositoryPort {
   constructor(private proposal: Proposal) {}
 
-  async getCompanyById(): Promise<CompanyLookup | null> {
+  async getCustomerById(): Promise<CustomerLookup | null> {
     return null;
   }
 

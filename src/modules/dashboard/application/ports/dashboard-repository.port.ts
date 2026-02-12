@@ -4,9 +4,9 @@ export interface DashboardStatusMetric {
   totalValueBrl: number;
 }
 
-export interface DashboardCompanyMetric {
-  companyId: string;
-  companyName: string;
+export interface DashboardCustomerMetric {
+  customerId: string;
+  customerName: string;
   proposalCount: number;
   wonProposals: number;
   lostProposals: number;
@@ -23,7 +23,7 @@ export interface DashboardSummary {
   estimatedValueTotalBrl: number;
   wonValueTotalBrl: number;
   byStatus: DashboardStatusMetric[];
-  byCompany: DashboardCompanyMetric[];
+  byCustomer: DashboardCustomerMetric[];
 }
 
 export interface DashboardRepositoryPort {

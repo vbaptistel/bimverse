@@ -114,7 +114,7 @@ export class PrepareRevisionDocumentUploadUseCase
       .replace(/[^a-zA-Z0-9._-]/g, "_");
 
     const path = [
-      storageContext.companySlug,
+      storageContext.customerSlug,
       String(storageContext.year),
       storageContext.proposalCode,
       "revisions",

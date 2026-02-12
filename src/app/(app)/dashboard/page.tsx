@@ -56,7 +56,7 @@ export default async function DashboardPage() {
       valueBrl: totalValueBrl,
       fill: PROPOSAL_STATUS_COLORS[status],
     }));
-  const rankedCompanies = summary?.byCompany.filter(({ proposalCount }) => proposalCount > 0) ?? [];
+  const rankedCustomers = summary?.byCustomer.filter(({ proposalCount }) => proposalCount > 0) ?? [];
 
   const sectionCardsData = summary
     ? [
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rankedCompanies.length > 0 ? (
+            {rankedCustomers.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[680px] text-sm">
                   <thead>
@@ -167,22 +167,22 @@ export default async function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rankedCompanies.map((company) => (
-                      <tr key={company.companyId} className="border-b border-border/70">
+                    {rankedCustomers.map((customer) => (
+                      <tr key={customer.customerId} className="border-b border-border/70">
                         <td className="px-2 py-2 font-medium text-foreground">
-                          {company.companyName}
+                          {customer.customerName}
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">
-                          {company.proposalCount}
+                          {customer.proposalCount}
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">
-                          {formatCurrencyBrl(company.totalEstimatedValueBrl)}
+                          {formatCurrencyBrl(customer.totalEstimatedValueBrl)}
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">
-                          {formatCurrencyBrl(company.wonValueTotalBrl)}
+                          {formatCurrencyBrl(customer.wonValueTotalBrl)}
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">
-                          {percentFormatter.format(company.conversionRate)}
+                          {percentFormatter.format(customer.conversionRate)}
                         </td>
                       </tr>
                     ))}

@@ -1,5 +1,5 @@
 {
-  "id": "e8d1442f-af00-4d3c-babd-3a7036fb5c35",
+  "id": "730982b4-9eb3-4149-8c2c-2723ad00b872",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -54,7 +54,35 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "activity_log_entity_created_at_idx": {
+          "name": "activity_log_entity_created_at_idx",
+          "columns": [
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -181,8 +209,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.companies": {
-      "name": "companies",
+    "public.customers": {
+      "name": "customers",
       "schema": "",
       "columns": {
         "id": {
@@ -216,12 +244,13 @@
           "primaryKey": false,
           "notNull": false
         },
-        "active": {
-          "name": "active",
-          "type": "boolean",
+        "status": {
+          "name": "status",
+          "type": "customer_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": "'ativa'"
         },
         "created_at": {
           "name": "created_at",
@@ -239,8 +268,8 @@
         }
       },
       "indexes": {
-        "companies_slug_ux": {
-          "name": "companies_slug_ux",
+        "customers_slug_ux": {
+          "name": "customers_slug_ux",
           "columns": [
             {
               "expression": "slug",
@@ -262,12 +291,12 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.companies_to_suppliers": {
-      "name": "companies_to_suppliers",
+    "public.customers_to_suppliers": {
+      "name": "customers_to_suppliers",
       "schema": "",
       "columns": {
-        "company_id": {
-          "name": "company_id",
+        "customer_id": {
+          "name": "customer_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -281,12 +310,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "companies_to_suppliers_company_id_companies_id_fk": {
-          "name": "companies_to_suppliers_company_id_companies_id_fk",
-          "tableFrom": "companies_to_suppliers",
-          "tableTo": "companies",
+        "customers_to_suppliers_customer_id_customers_id_fk": {
+          "name": "customers_to_suppliers_customer_id_customers_id_fk",
+          "tableFrom": "customers_to_suppliers",
+          "tableTo": "customers",
           "columnsFrom": [
-            "company_id"
+            "customer_id"
           ],
           "columnsTo": [
             "id"
@@ -294,9 +323,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "companies_to_suppliers_supplier_id_suppliers_id_fk": {
-          "name": "companies_to_suppliers_supplier_id_suppliers_id_fk",
-          "tableFrom": "companies_to_suppliers",
+        "customers_to_suppliers_supplier_id_suppliers_id_fk": {
+          "name": "customers_to_suppliers_supplier_id_suppliers_id_fk",
+          "tableFrom": "customers_to_suppliers",
           "tableTo": "suppliers",
           "columnsFrom": [
             "supplier_id"
@@ -309,10 +338,10 @@
         }
       },
       "compositePrimaryKeys": {
-        "companies_to_suppliers_company_id_supplier_id_pk": {
-          "name": "companies_to_suppliers_company_id_supplier_id_pk",
+        "customers_to_suppliers_customer_id_supplier_id_pk": {
+          "name": "customers_to_suppliers_customer_id_supplier_id_pk",
           "columns": [
-            "company_id",
+            "customer_id",
             "supplier_id"
           ]
         }
@@ -503,8 +532,8 @@
       "name": "proposal_sequences",
       "schema": "",
       "columns": {
-        "company_id": {
-          "name": "company_id",
+        "customer_id": {
+          "name": "customer_id",
           "type": "uuid",
           "primaryKey": true,
           "notNull": true
@@ -526,12 +555,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "proposal_sequences_company_id_companies_id_fk": {
-          "name": "proposal_sequences_company_id_companies_id_fk",
+        "proposal_sequences_customer_id_customers_id_fk": {
+          "name": "proposal_sequences_customer_id_customers_id_fk",
           "tableFrom": "proposal_sequences",
-          "tableTo": "companies",
+          "tableTo": "customers",
           "columnsFrom": [
-            "company_id"
+            "customer_id"
           ],
           "columnsTo": [
             "id"
@@ -634,6 +663,28 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "proposal_suppliers_no_revision_ux": {
+          "name": "proposal_suppliers_no_revision_ux",
+          "columns": [
+            {
+              "expression": "proposal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"proposal_suppliers\".\"revision_id\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -694,8 +745,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "company_id": {
-          "name": "company_id",
+        "customer_id": {
+          "name": "customer_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -805,11 +856,11 @@
           "method": "btree",
           "with": {}
         },
-        "proposals_company_year_seq_ux": {
-          "name": "proposals_company_year_seq_ux",
+        "proposals_customer_year_seq_ux": {
+          "name": "proposals_customer_year_seq_ux",
           "columns": [
             {
-              "expression": "company_id",
+              "expression": "customer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -834,12 +885,12 @@
         }
       },
       "foreignKeys": {
-        "proposals_company_id_companies_id_fk": {
-          "name": "proposals_company_id_companies_id_fk",
+        "proposals_customer_id_customers_id_fk": {
+          "name": "proposals_customer_id_customers_id_fk",
           "tableFrom": "proposals",
-          "tableTo": "companies",
+          "tableTo": "customers",
           "columnsFrom": [
-            "company_id"
+            "customer_id"
           ],
           "columnsTo": [
             "id"
@@ -965,6 +1016,17 @@
         "proposta_word",
         "planilha_custos",
         "outro"
+      ]
+    },
+    "public.customer_status": {
+      "name": "customer_status",
+      "schema": "public",
+      "values": [
+        "potencial",
+        "em_negociacao",
+        "ativa",
+        "inativa",
+        "bloqueada"
       ]
     },
     "public.proposal_status": {

@@ -1,10 +1,11 @@
 import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import type {
-  CompanyLookup,
+  CustomerLookup,
   CreateProposalRecordInput,
   ListProposalsFilters,
   ProposalDetailRecord,
+  ProposalListRecord,
   ProposalRepositoryPort,
   ProposalStorageContext,
   UpdateProposalBaseFieldsInput,
@@ -12,7 +13,7 @@ import type {
 } from "@/modules/proposals/application/ports/proposal-repository.port";
 import type { Proposal } from "@/modules/proposals/domain/proposal";
 import {
-  companies,
+  customers,
   proposals,
   proposalSequences,
 } from "@/shared/infrastructure/db/schema";
@@ -31,7 +32,7 @@ function parseOptionalNumber(value: string | null): number | null {
 function toDomain(row: typeof proposals.$inferSelect): Proposal {
   return {
     id: row.id,
-    companyId: row.companyId,
+    customerId: row.customerId,
     code: row.code,
     seqNumber: row.seqNumber,
     year: row.year,
@@ -51,23 +52,41 @@ function toDomain(row: typeof proposals.$inferSelect): Proposal {
 
 function toDetailRecord(
   row: typeof proposals.$inferSelect & {
-    companyName: string;
-    companySlug: string;
+    customerName: string;
+    customerSlug: string;
   },
 ): ProposalDetailRecord {
   const proposal = toDomain(row);
 
   return {
     ...proposal,
-    companyName: row.companyName,
-    companySlug: row.companySlug,
+    customerName: row.customerName,
+    customerSlug: row.customerSlug,
+  };
+}
+
+function toListRecord(
+  row: {
+    proposal: typeof proposals.$inferSelect;
+    customer: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  },
+): ProposalListRecord {
+  const proposal = toDomain(row.proposal);
+
+  return {
+    ...proposal,
+    customer: row.customer,
   };
 }
 
 export class DrizzleProposalRepository implements ProposalRepositoryPort {
   constructor(private readonly database: Database) {}
 
-  async findMany(filters: ListProposalsFilters = {}): Promise<Proposal[]> {
+  async findMany(filters: ListProposalsFilters = {}): Promise<ProposalListRecord[]> {
     const conditions: SQL<unknown>[] = [];
 
     if (filters.search) {
@@ -77,6 +96,7 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
           ilike(proposals.code, term),
           ilike(proposals.projectName, term),
           ilike(proposals.invitationCode, term),
+          ilike(customers.name, term),
         )!,
       );
     }
@@ -86,8 +106,16 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
     }
 
     const query = this.database
-      .select()
+      .select({
+        proposal: proposals,
+        customer: {
+          id: customers.id,
+          name: customers.name,
+          slug: customers.slug,
+        },
+      })
       .from(proposals)
+      .innerJoin(customers, eq(customers.id, proposals.customerId))
       .orderBy(desc(proposals.createdAt), proposals.code);
 
     const rows =
@@ -97,20 +125,20 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
           )
         : await query;
 
-    return rows.map(toDomain);
+    return rows.map(toListRecord);
   }
 
-  async getCompanyById(companyId: string): Promise<CompanyLookup | null> {
-    const [company] = await this.database
+  async getCustomerById(customerId: string): Promise<CustomerLookup | null> {
+    const [customer] = await this.database
       .select({
-        id: companies.id,
-        slug: companies.slug,
+        id: customers.id,
+        slug: customers.slug,
       })
-      .from(companies)
-      .where(eq(companies.id, companyId))
+      .from(customers)
+      .where(eq(customers.id, customerId))
       .limit(1);
 
-    return company ?? null;
+    return customer ?? null;
   }
 
   async getDetailById(proposalId: string): Promise<ProposalDetailRecord | null> {
@@ -124,34 +152,34 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
       return null;
     }
 
-    const [company] = await this.database
+    const [customer] = await this.database
       .select({
-        name: companies.name,
-        slug: companies.slug,
+        name: customers.name,
+        slug: customers.slug,
       })
-      .from(companies)
-      .where(eq(companies.id, proposal.companyId))
+      .from(customers)
+      .where(eq(customers.id, proposal.customerId))
       .limit(1);
 
-    if (!company) {
+    if (!customer) {
       return null;
     }
 
     return toDetailRecord({
       ...proposal,
-      companyName: company.name,
-      companySlug: company.slug,
+      customerName: customer.name,
+      customerSlug: customer.slug,
     });
   }
 
-  async allocateNextSequence(companyId: string, year: number): Promise<number> {
+  async allocateNextSequence(customerId: string, year: number): Promise<number> {
     void year;
 
     return this.database.transaction(async (tx) => {
       const result = await tx.execute<{ seq: number }>(sql`
-        INSERT INTO ${proposalSequences} (company_id, next_seq, updated_at)
-        VALUES (${companyId}, 2, NOW())
-        ON CONFLICT (company_id)
+        INSERT INTO ${proposalSequences} (customer_id, next_seq, updated_at)
+        VALUES (${customerId}, 2, NOW())
+        ON CONFLICT (customer_id)
         DO UPDATE SET
           next_seq = ${proposalSequences.nextSeq} + 1,
           updated_at = NOW()
@@ -171,7 +199,7 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
     const [proposal] = await this.database
       .insert(proposals)
       .values({
-        companyId: input.companyId,
+        customerId: input.customerId,
         code: input.code,
         seqNumber: input.seqNumber,
         year: input.year,
@@ -241,10 +269,10 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
         proposalId: proposals.id,
         proposalCode: proposals.code,
         year: proposals.year,
-        companySlug: companies.slug,
+        customerSlug: customers.slug,
       })
       .from(proposals)
-      .innerJoin(companies, eq(companies.id, proposals.companyId))
+      .innerJoin(customers, eq(customers.id, proposals.customerId))
       .where(eq(proposals.id, proposalId))
       .limit(1);
 
