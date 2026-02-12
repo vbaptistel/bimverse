@@ -2,7 +2,6 @@ import { FileClock, FileText, History, UsersRound } from "lucide-react";
 
 import { UploadAttachmentForm } from "@/components/attachments/upload-attachment-form";
 import { EmptyState } from "@/components/shared/empty-state";
-import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ProposalDetailPageProps {
@@ -16,11 +15,9 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
 
   return (
     <>
-      <PageHeader
-        badge="Detalhe"
-        title={`Proposta ${id}`}
-        description="Tela consolidada com visão geral, revisões, anexos, fornecedores e histórico."
-      />
+      <p className="mb-4 text-sm text-[#5b6d84]">
+        Proposta selecionada: <span className="font-mono">{id}</span>
+      </p>
 
       <section className="mb-6 grid gap-4 md:grid-cols-3">
         <Card>

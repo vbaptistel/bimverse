@@ -1,7 +1,6 @@
 import { BriefcaseBusiness, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
-import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,22 +8,14 @@ import { Input } from "@/components/ui/input";
 export default function SuppliersPage() {
   return (
     <>
-      <PageHeader
-        badge="Cadastro"
-        title="Fornecedores"
-        description="Cadastro base para composição comercial e vínculo por proposta/revisão."
-        action={
-          <Button>
-            <Plus size={14} /> Novo fornecedor
-          </Button>
-        }
-      />
-
       <section className="mb-4 rounded-xl border border-[#d6dde6] bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto]">
           <Input placeholder="Buscar fornecedor" />
           <Input placeholder="Especialidade" />
           <Input placeholder="Faixa de custo/hora" />
+          <Button>
+            <Plus size={14} /> Novo fornecedor
+          </Button>
         </div>
       </section>
 

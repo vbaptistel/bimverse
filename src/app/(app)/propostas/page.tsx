@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Filter, Plus } from "lucide-react";
 
-import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,26 +8,18 @@ import { Input } from "@/components/ui/input";
 export default function ProposalsPage() {
   return (
     <>
-      <PageHeader
-        badge="Comercial"
-        title="Propostas"
-        description="Visão de funil, filtros e acompanhamento do ciclo comercial."
-        action={
-          <Link href="/propostas/nova">
-            <Button>
-              <Plus size={14} /> Nova proposta
-            </Button>
-          </Link>
-        }
-      />
-
       <section className="mb-4 rounded-xl border border-[#d6dde6] bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr]">
+        <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto_auto]">
           <Input placeholder="Buscar por código, projeto ou cliente" />
           <Input placeholder="Cliente" />
           <Input placeholder="Status" />
           <Button variant="secondary">
             <Filter size={14} /> Aplicar filtros
+          </Button>
+          <Button asChild>
+            <Link href="/propostas/nova">
+              <Plus size={14} /> Nova proposta
+            </Link>
           </Button>
         </div>
       </section>

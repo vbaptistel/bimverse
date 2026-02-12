@@ -34,13 +34,6 @@ const sectionCardsData = [
 export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard de Propostas</h1>
-        <p className="text-muted-foreground">
-          Visão gerencial de conversão, valores e performance por cliente.
-        </p>
-      </div>
-
       <SectionCards cards={sectionCardsData} />
 
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">

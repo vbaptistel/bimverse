@@ -1,18 +1,14 @@
 import { ShieldCheck, UserCog } from "lucide-react";
 
-import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function UsersAdminPage() {
   return (
     <>
-      <PageHeader
-        badge="Admin"
-        title="Usuários e Permissões"
-        description="Controle de acesso para perfis admin e comercial."
-        action={<Button variant="secondary">Convidar usuário</Button>}
-      />
+      <section className="mb-4 flex justify-end">
+        <Button variant="secondary">Convidar usuário</Button>
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2">
         <Card>
