@@ -82,19 +82,13 @@ export class DrizzleRevisionRepository implements RevisionRepositoryPort {
         reason: input.reason,
         scopeChanges: input.scopeChanges,
         discountBrl:
-          input.discountBrl !== undefined ? String(input.discountBrl) : undefined,
+          input.discountBrl != null ? String(input.discountBrl) : null,
         discountPercent:
-          input.discountPercent !== undefined
-            ? String(input.discountPercent)
-            : undefined,
+          input.discountPercent != null ? String(input.discountPercent) : null,
         valueBeforeBrl:
-          input.valueBeforeBrl !== undefined
-            ? String(input.valueBeforeBrl)
-            : undefined,
+          input.valueBeforeBrl != null ? String(input.valueBeforeBrl) : null,
         valueAfterBrl:
-          input.valueAfterBrl !== undefined
-            ? String(input.valueAfterBrl)
-            : undefined,
+          input.valueAfterBrl != null ? String(input.valueAfterBrl) : null,
         notes: input.notes,
         createdBy: input.createdBy,
       })

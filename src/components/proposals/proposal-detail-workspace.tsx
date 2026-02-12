@@ -272,6 +272,29 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     [detail.revisions],
   );
 
+  const currentEstimatedValueBrl = baseForm.watch("estimatedValueBrl");
+  const pendingCycleEstimatedValueBrl =
+    detail.pendingRevisionCycle?.snapshot.estimatedValueBrl ?? null;
+  const revisionDiscountPreview = useMemo(() => {
+    if (
+      pendingCycleEstimatedValueBrl === null ||
+      currentEstimatedValueBrl == null ||
+      pendingCycleEstimatedValueBrl <= 0 ||
+      currentEstimatedValueBrl >= pendingCycleEstimatedValueBrl
+    ) {
+      return null;
+    }
+
+    const discountBrl = Number(
+      (pendingCycleEstimatedValueBrl - currentEstimatedValueBrl).toFixed(2),
+    );
+    const discountPercent = Number(
+      ((discountBrl / pendingCycleEstimatedValueBrl) * 100).toFixed(2),
+    );
+
+    return { discountBrl, discountPercent };
+  }, [pendingCycleEstimatedValueBrl, currentEstimatedValueBrl]);
+
   const latestRevisionNumber = useMemo(
     () =>
       detail.revisions.reduce(
@@ -406,6 +429,28 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
   const handleCloseRevision = closeRevisionForm.handleSubmit((values) => {
     startTransition(async () => {
+      const baseValues = baseForm.getValues();
+      const criticalFieldsChanged =
+        detail.proposal.scopeDescription !== baseValues.scopeDescription.trim() ||
+        detail.proposal.dueDate !== (baseValues.dueDate || null) ||
+        detail.proposal.estimatedValueBrl !== (baseValues.estimatedValueBrl ?? null);
+
+      if (criticalFieldsChanged) {
+        const updatedBase = await updateProposalBaseAction({
+          ...baseValues,
+          invitationCode: toNullableText(baseValues.invitationCode),
+          dueDate: baseValues.dueDate || null,
+          estimatedValueBrl: baseValues.estimatedValueBrl ?? null,
+        });
+
+        if (!updatedBase.success) {
+          toast.error(
+            `Erro ao salvar valor/escopo/prazo antes do fechamento: ${updatedBase.error}`,
+          );
+          return;
+        }
+      }
+
       const fileInput = document.getElementById(
         "revisionDocumentFile",
       ) as HTMLInputElement | null;
@@ -669,7 +714,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
       {isInReview ? (
         <section>
-          <Card className="border-amber-300/80 bg-amber-50">
+          <Card>
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
                 <CardTitle>Ciclo de revisão</CardTitle>
@@ -679,20 +724,15 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               </div>
               <Badge
                 variant="secondary"
-                className="border border-amber-300 bg-amber-100 text-amber-900"
+                className="border border-red-300 bg-red-100 text-red-900"
               >
                 Revisão pendente
               </Badge>
             </CardHeader>
-            <CardContent>
+            <CardContent className="border-red-300">
               <form className="grid gap-4" onSubmit={handleCloseRevision}>
-                <div className="rounded-md border border-amber-300 bg-amber-100/80 px-3 py-2 text-sm text-amber-900">
-                  Feche a revisão com o documento atualizado para voltar a proposta para
-                  status enviada.
-                </div>
-
-                <div className="grid gap-2 rounded-lg border border-amber-300 bg-amber-100/80 p-4">
-                  <p className="text-sm font-semibold text-amber-900">
+                <div className="grid gap-2 rounded-lg border p-4">
+                  <p className="text-sm font-semibold">
                     1. Documento da proposta revisada
                   </p>
                   <Label htmlFor="revisionDocumentFile">Arquivo da proposta revisada</Label>
@@ -703,15 +743,65 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     disabled={isPending}
                     accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
                   />
-                  <p className="text-xs text-amber-900/80">
-                    O desconto da revisão será calculado automaticamente pela variação do
-                    valor estimado da proposta.
-                  </p>
                 </div>
 
-                <div className="grid gap-2 rounded-lg border border-amber-300 bg-amber-100/50 p-4">
-                  <p className="text-sm font-semibold text-amber-900">
-                    2. Motivo da revisão
+                <div className="grid gap-2 rounded-lg border p-4">
+                  <p className="text-sm font-semibold">
+                    2. Valor da proposta
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="revisionEstimatedValueBrl">Valor estimado atualizado</Label>
+                      <Controller
+                        name="estimatedValueBrl"
+                        control={baseForm.control}
+                        render={({ field }) => (
+                          <Input
+                            id="revisionEstimatedValueBrl"
+                            className="bg-white disabled:bg-white"
+                            type="text"
+                            inputMode="numeric"
+                            disabled={isPending || isFinalStatus || !canEditCriticalFields}
+                            value={
+                              field.value === null || field.value === undefined
+                                ? ""
+                                : formatCurrencyBrl(field.value)
+                            }
+                            onBlur={field.onBlur}
+                            onChange={(event) =>
+                              field.onChange(parseCurrencyBrlInput(event.target.value))
+                            }
+                          />
+                        )}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Valor no início do ciclo</Label>
+                      <p className="rounded-md border bg-white px-3 py-2 text-sm">
+                        {pendingCycleEstimatedValueBrl !== null
+                          ? formatCurrencyBrl(pendingCycleEstimatedValueBrl)
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-white px-3 py-2 text-sm">
+                    {revisionDiscountPreview ? (
+                      <>
+                        Desconto:{" "}
+                        <span className="font-semibold">
+                          {formatCurrencyBrl(revisionDiscountPreview.discountBrl)}
+                        </span>{" "}
+                        ({revisionDiscountPreview.discountPercent.toFixed(2)}%)
+                      </>
+                    ) : (
+                      "Sem desconto calculado no momento (valor atual igual ou maior que o valor inicial do ciclo)."
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 rounded-lg border p-4">
+                  <p className="text-sm font-semibold">
+                    3. Motivo da revisão
                   </p>
                   <div className="grid gap-2">
                     <Label htmlFor="closeRevisionReason">Motivo</Label>
@@ -729,11 +819,11 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   </div>
                 </div>
 
-                <details className="rounded-lg border border-amber-300 bg-amber-100/40 p-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-amber-900">
-                    3. Detalhes opcionais da revisão
+                <details className="rounded-lg border p-4">
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    4. Detalhes opcionais da revisão
                   </summary>
-                  <div className="mt-3 grid gap-2 text-xs text-amber-900/80">
+                  <div className="mt-3 grid gap-2 text-xs">
                     <p>Preencha somente se quiser registrar contexto adicional.</p>
                   </div>
                   <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -765,7 +855,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   </div>
                 </details>
 
-                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-300/60 pt-4">
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-4">
                   <Button
                     type="button"
                     variant="secondary"
@@ -809,6 +899,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               </Button>
             ) : null}
           </CardHeader>
+
           <CardContent className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
             <form className="grid gap-4 self-start" onSubmit={handleBaseSave}>
               <div className="grid gap-2">
@@ -820,18 +911,18 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="invitationCode">Código convite</Label>
-                <Input
-                  id="invitationCode"
-                  disabled={isPending || isFinalStatus}
-                  {...baseForm.register("invitationCode", {
-                    setValueAs: (value) => toNullableText(value),
-                  })}
-                />
-              </div>
-
               <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="invitationCode">Código convite</Label>
+                  <Input
+                    id="invitationCode"
+                    disabled={isPending || isFinalStatus}
+                    {...baseForm.register("invitationCode", {
+                      setValueAs: (value) => toNullableText(value),
+                    })}
+                  />
+                </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="dueDate">Prazo</Label>
                   <Input
@@ -841,31 +932,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     {...baseForm.register("dueDate", {
                       setValueAs: (value) => (value ? value : null),
                     })}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="estimatedValueBrl">Valor estimado</Label>
-                  <Controller
-                    name="estimatedValueBrl"
-                    control={baseForm.control}
-                    render={({ field }) => (
-                      <Input
-                        id="estimatedValueBrl"
-                        type="text"
-                        inputMode="numeric"
-                        disabled={isPending || isFinalStatus || !canEditCriticalFields}
-                        value={
-                          field.value === null || field.value === undefined
-                            ? ""
-                            : formatCurrencyBrl(field.value)
-                        }
-                        onBlur={field.onBlur}
-                        onChange={(event) =>
-                          field.onChange(parseCurrencyBrlInput(event.target.value))
-                        }
-                      />
-                    )}
                   />
                 </div>
               </div>
