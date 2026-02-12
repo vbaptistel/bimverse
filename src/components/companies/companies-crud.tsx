@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -263,14 +263,14 @@ export function CompaniesCrud({
 
   return (
     <>
-      <section className="mb-4 rounded-xl border border-[#d6dde6] bg-white p-4">
+      <section className="mb-4 rounded-xl border border-border bg-card p-4">
         <form
           className="grid gap-3 md:grid-cols-[2fr_1fr_auto_auto_auto]"
           onSubmit={handleApplyFilters}
         >
           <div className="relative">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#5b6d84]"
+              className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
               size={14}
             />
             <Input
@@ -298,16 +298,8 @@ export function CompaniesCrud({
             </SelectContent>
           </Select>
 
-          <Button
-            type="button"
-            onClick={openCreateModal}
-            disabled={isPending}
-          >
-            <Plus size={14} /> Nova empresa
-          </Button>
-
           <Button type="submit" variant="secondary" disabled={isPending}>
-            {isPending ? "Filtrando..." : "Aplicar filtros"}
+            <Filter className="size-3.5" /> Aplicar filtros
           </Button>
 
           <Button
@@ -317,6 +309,14 @@ export function CompaniesCrud({
             disabled={isPending}
           >
             Limpar
+          </Button>
+
+          <Button
+            type="button"
+            onClick={openCreateModal}
+            disabled={isPending}
+          >
+            <Plus className="size-3.5" /> Nova empresa
           </Button>
         </form>
       </section>
@@ -471,7 +471,7 @@ export function CompaniesCrud({
                 <th className="px-2 py-2">CNPJ</th>
                 <th className="px-2 py-2">Status</th>
                 <th className="px-2 py-2">Criada em</th>
-                <th className="px-2 py-2">Ações</th>
+                <th className="px-2 py-2 text-center"></th>
               </tr>
             </thead>
             <tbody>
@@ -506,8 +506,8 @@ export function CompaniesCrud({
                     <td className="px-2 py-3 text-xs text-[#5b6d84]">
                       {dateFormatter.format(new Date(company.createdAt))}
                     </td>
-                    <td className="px-2 py-3">
-                      <div className="flex gap-2">
+                    <td className="px-2 py-3 w-[100px]">
+                      <div className="flex justify-end gap-2">
                         <Button
                           type="button"
                           size="sm"

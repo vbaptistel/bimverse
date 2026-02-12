@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Filter, Plus } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,17 +8,17 @@ import { Input } from "@/components/ui/input";
 export default function ProposalsPage() {
   return (
     <>
-      <section className="mb-4 rounded-xl border border-[#d6dde6] bg-white p-4">
+      <section className="mb-4 rounded-xl border border-border bg-card p-4">
         <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto_auto]">
           <Input placeholder="Buscar por código, projeto ou cliente" />
           <Input placeholder="Cliente" />
           <Input placeholder="Status" />
           <Button variant="secondary">
-            <Filter size={14} /> Aplicar filtros
+            <Filter className="size-3.5" /> Aplicar filtros
           </Button>
           <Button asChild>
             <Link href="/propostas/nova">
-              <Plus size={14} /> Nova proposta
+              <Plus className="size-3.5" /> Nova proposta
             </Link>
           </Button>
         </div>

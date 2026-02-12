@@ -1,7 +1,7 @@
 import { buildCompanySlug } from "@/modules/companies/domain/company-slug";
 import type { Company } from "@/modules/companies/domain/company";
 import type { UseCase } from "@/shared/application/use-case";
-import { normalizeCnpj } from "@/shared/domain/cnpj";
+import { normalizeCnpj, validateCnpj } from "@/shared/domain/cnpj";
 import { NotFoundError, ValidationError } from "@/shared/domain/errors";
 import type { CompanyStatus } from "@/shared/domain/types";
 import type { CompanyRepositoryPort } from "@/modules/companies/application/ports/company-repository.port";
@@ -35,6 +35,9 @@ function parseCnpj(value?: string | null): string | null {
   const digits = normalizeCnpj(text);
   if (digits.length !== 14) {
     throw new ValidationError("CNPJ deve conter 14 dígitos");
+  }
+  if (!validateCnpj(text)) {
+    throw new ValidationError("CNPJ inválido");
   }
 
   return digits;

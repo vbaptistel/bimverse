@@ -8,13 +8,13 @@ import { Input } from "@/components/ui/input";
 export default function SuppliersPage() {
   return (
     <>
-      <section className="mb-4 rounded-xl border border-[#d6dde6] bg-white p-4">
+      <section className="mb-4 rounded-xl border border-border bg-card p-4">
         <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto]">
           <Input placeholder="Buscar fornecedor" />
           <Input placeholder="Especialidade" />
           <Input placeholder="Faixa de custo/hora" />
           <Button>
-            <Plus size={14} /> Novo fornecedor
+            <Plus className="size-3.5" /> Novo fornecedor
           </Button>
         </div>
       </section>

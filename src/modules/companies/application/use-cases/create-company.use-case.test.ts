@@ -97,16 +97,16 @@ describe("CreateCompanyUseCase", () => {
 
     const company = await useCase.execute({
       name: "Bimverse",
-      cnpj: "12.345.678/0001-99",
+      cnpj: "44.038.188/0001-32",
       notes: "Cliente estratégico",
     });
 
     expect(company.slug).toBe("bimverse-2");
-    expect(company.cnpj).toBe("12345678000199");
+    expect(company.cnpj).toBe("44038188000132");
     expect(company.status).toBe("ativa");
   });
 
-  it("rejeita cnpj inválido", async () => {
+  it("rejeita cnpj com menos de 14 dígitos", async () => {
     const useCase = new CreateCompanyUseCase(new FakeCompanyRepository());
 
     await expect(
@@ -115,5 +115,16 @@ describe("CreateCompanyUseCase", () => {
         cnpj: "123",
       }),
     ).rejects.toThrow("CNPJ deve conter 14 dígitos");
+  });
+
+  it("rejeita cnpj com dígitos verificadores inválidos", async () => {
+    const useCase = new CreateCompanyUseCase(new FakeCompanyRepository());
+
+    await expect(
+      useCase.execute({
+        name: "Empresa X",
+        cnpj: "12.345.678/0001-99",
+      }),
+    ).rejects.toThrow("CNPJ inválido");
   });
 });

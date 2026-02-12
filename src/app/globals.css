@@ -20,7 +20,7 @@
   --secondary-foreground: 220 8% 7%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 0 0% 90%;
+  --input: 0 0% 100%;
   --ring: 175 77% 26%;
   --font-sans: var(--font-ibm-plex-sans);
   --font-heading: var(--font-sora);
