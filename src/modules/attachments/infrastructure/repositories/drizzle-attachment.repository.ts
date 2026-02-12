@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import type {
   AttachmentRepositoryPort,
@@ -58,5 +58,15 @@ export class DrizzleAttachmentRepository implements AttachmentRepositoryPort {
       .limit(1);
 
     return attachment ? toDomain(attachment) : null;
+  }
+
+  async findManyByProposalId(proposalId: string): Promise<Attachment[]> {
+    const rows = await this.database
+      .select()
+      .from(attachments)
+      .where(eq(attachments.proposalId, proposalId))
+      .orderBy(desc(attachments.createdAt));
+
+    return rows.map(toDomain);
   }
 }

@@ -16,6 +16,10 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return null;
   }
 
+  async getDetailById() {
+    return null;
+  }
+
   async findMany(filters?: ListProposalsFilters): Promise<Proposal[]> {
     const status = filters?.status ?? "recebida";
 
@@ -47,6 +51,10 @@ class FakeProposalRepository implements ProposalRepositoryPort {
 
   async createProposal(input: CreateProposalRecordInput): Promise<Proposal> {
     void input;
+    throw new Error("not implemented");
+  }
+
+  async updateBaseFields(): Promise<Proposal> {
     throw new Error("not implemented");
   }
 

@@ -1,27 +1,27 @@
 "use server";
 
 import { buildProposalsComposition } from "@/composition/proposals.composition";
-import {
-  type UpdateProposalStatusSchema,
-  updateProposalStatusSchema,
-} from "@/modules/proposals/interface/schemas/proposal.schema";
 import { presentProposal } from "@/modules/proposals/interface/presenters/proposal.presenter";
+import {
+  cancelProposalRevisionSchema,
+  type CancelProposalRevisionSchema,
+} from "@/modules/proposals/interface/schemas/proposal.schema";
 import { SupabaseAuthContextAdapter } from "@/shared/infrastructure/auth/supabase-auth-context.adapter";
 import type { ActionResult } from "@/shared/interface/action-result";
 import { toActionFailure } from "@/shared/interface/action-result";
 
-export async function updateProposalStatusAction(
-  rawInput: UpdateProposalStatusSchema,
+export async function cancelProposalRevisionAction(
+  rawInput: CancelProposalRevisionSchema,
 ): Promise<ActionResult<ReturnType<typeof presentProposal>>> {
   try {
     const authContext = new SupabaseAuthContextAdapter();
     const user = await authContext.getCurrentUser();
 
-    const input = updateProposalStatusSchema.parse(rawInput);
-    const { updateProposalStatusUseCase } = buildProposalsComposition();
-    const proposal = await updateProposalStatusUseCase.execute({
-      ...input,
-      changedBy: user.userId,
+    const input = cancelProposalRevisionSchema.parse(rawInput);
+    const { cancelProposalRevisionUseCase } = buildProposalsComposition();
+    const proposal = await cancelProposalRevisionUseCase.execute({
+      proposalId: input.proposalId,
+      canceledBy: user.userId,
     });
 
     return {

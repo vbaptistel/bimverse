@@ -34,6 +34,10 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
       createdAt: new Date(),
     };
   }
+
+  async findManyByProposalId() {
+    return [];
+  }
 }
 
 class FakeStoragePort implements StoragePort {

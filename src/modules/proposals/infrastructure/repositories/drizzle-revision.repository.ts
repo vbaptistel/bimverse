@@ -38,6 +38,26 @@ function toDomain(row: typeof proposalRevisions.$inferSelect): ProposalRevision 
 export class DrizzleRevisionRepository implements RevisionRepositoryPort {
   constructor(private readonly database: Database) {}
 
+  async findById(revisionId: string): Promise<ProposalRevision | null> {
+    const [revision] = await this.database
+      .select()
+      .from(proposalRevisions)
+      .where(eq(proposalRevisions.id, revisionId))
+      .limit(1);
+
+    return revision ? toDomain(revision) : null;
+  }
+
+  async findManyByProposalId(proposalId: string): Promise<ProposalRevision[]> {
+    const rows = await this.database
+      .select()
+      .from(proposalRevisions)
+      .where(eq(proposalRevisions.proposalId, proposalId))
+      .orderBy(desc(proposalRevisions.revisionNumber), desc(proposalRevisions.createdAt));
+
+    return rows.map(toDomain);
+  }
+
   async getNextRevisionNumber(proposalId: string): Promise<number> {
     const [latestRevision] = await this.database
       .select({ revisionNumber: proposalRevisions.revisionNumber })

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Sora } from "next/font/google";
 
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -37,7 +38,10 @@ export default function RootLayout({
       className={`${sora.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
     >
       <body className="antialiased">
-        <TooltipProvider>{children}</TooltipProvider>
+        <TooltipProvider>
+          {children}
+          <Toaster richColors position="top-right" />
+        </TooltipProvider>
       </body>
     </html>
   );

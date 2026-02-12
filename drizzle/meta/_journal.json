@@ -22,6 +22,13 @@
       "when": 1770858000000,
       "tag": "0002_company_status",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770868800000,
+      "tag": "0003_proposal_detail_indexes",
+      "breakpoints": true
     }
   ]
 }

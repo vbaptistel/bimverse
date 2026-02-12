@@ -15,4 +15,5 @@ export interface CreateAttachmentRecordInput {
 export interface AttachmentRepositoryPort {
   createAttachment(input: CreateAttachmentRecordInput): Promise<Attachment>;
   findById(id: string): Promise<Attachment | null>;
+  findManyByProposalId(proposalId: string): Promise<Attachment[]>;
 }

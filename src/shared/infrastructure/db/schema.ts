@@ -2,6 +2,7 @@ import {
   bigint,
   boolean,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -13,6 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("role", ["admin", "comercial"]);
 
@@ -186,6 +188,9 @@ export const proposalSuppliers = pgTable(
       table.supplierId,
       table.revisionId,
     ),
+    uniqueIndex("proposal_suppliers_no_revision_ux")
+      .on(table.proposalId, table.supplierId)
+      .where(sql`${table.revisionId} IS NULL`),
   ],
 );
 
@@ -218,7 +223,13 @@ export const activityLog = pgTable("activity_log", {
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   createdBy: uuid("created_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [
+  index("activity_log_entity_created_at_idx").on(
+    table.entityType,
+    table.entityId,
+    table.createdAt.desc(),
+  ),
+]);
 
 export const companiesToSuppliers = pgTable(
   "companies_to_suppliers",

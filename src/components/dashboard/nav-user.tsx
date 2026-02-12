@@ -5,7 +5,6 @@ import {
   HelpCircle,
   LogOut,
   Settings,
-  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -23,7 +22,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,

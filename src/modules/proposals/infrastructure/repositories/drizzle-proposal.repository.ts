@@ -4,8 +4,10 @@ import type {
   CompanyLookup,
   CreateProposalRecordInput,
   ListProposalsFilters,
+  ProposalDetailRecord,
   ProposalRepositoryPort,
   ProposalStorageContext,
+  UpdateProposalBaseFieldsInput,
   UpdateProposalStatusInput,
 } from "@/modules/proposals/application/ports/proposal-repository.port";
 import type { Proposal } from "@/modules/proposals/domain/proposal";
@@ -44,6 +46,21 @@ function toDomain(row: typeof proposals.$inferSelect): Proposal {
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function toDetailRecord(
+  row: typeof proposals.$inferSelect & {
+    companyName: string;
+    companySlug: string;
+  },
+): ProposalDetailRecord {
+  const proposal = toDomain(row);
+
+  return {
+    ...proposal,
+    companyName: row.companyName,
+    companySlug: row.companySlug,
   };
 }
 
@@ -94,6 +111,37 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
       .limit(1);
 
     return company ?? null;
+  }
+
+  async getDetailById(proposalId: string): Promise<ProposalDetailRecord | null> {
+    const [proposal] = await this.database
+      .select()
+      .from(proposals)
+      .where(eq(proposals.id, proposalId))
+      .limit(1);
+
+    if (!proposal) {
+      return null;
+    }
+
+    const [company] = await this.database
+      .select({
+        name: companies.name,
+        slug: companies.slug,
+      })
+      .from(companies)
+      .where(eq(companies.id, proposal.companyId))
+      .limit(1);
+
+    if (!company) {
+      return null;
+    }
+
+    return toDetailRecord({
+      ...proposal,
+      companyName: company.name,
+      companySlug: company.slug,
+    });
   }
 
   async allocateNextSequence(companyId: string, year: number): Promise<number> {
@@ -151,6 +199,30 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
     return toDomain(proposal);
   }
 
+  async updateBaseFields(input: UpdateProposalBaseFieldsInput): Promise<Proposal> {
+    const [proposal] = await this.database
+      .update(proposals)
+      .set({
+        projectName: input.projectName,
+        invitationCode: input.invitationCode,
+        scopeDescription: input.scopeDescription,
+        dueDate: input.dueDate,
+        estimatedValueBrl:
+          input.estimatedValueBrl !== undefined
+            ? String(input.estimatedValueBrl)
+            : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(proposals.id, input.proposalId))
+      .returning();
+
+    if (!proposal) {
+      throw new Error("Falha ao atualizar dados da proposta");
+    }
+
+    return toDomain(proposal);
+  }
+
   async getProposalById(proposalId: string): Promise<Proposal | null> {
     const [proposal] = await this.database
       .select()
@@ -186,9 +258,11 @@ export class DrizzleProposalRepository implements ProposalRepositoryPort {
         status: input.status,
         outcomeReason: input.outcomeReason,
         finalValueBrl:
-          input.finalValueBrl !== undefined
-            ? String(input.finalValueBrl)
-            : undefined,
+          input.finalValueBrl === undefined
+            ? undefined
+            : input.finalValueBrl === null
+              ? null
+              : String(input.finalValueBrl),
         updatedAt: new Date(),
       })
       .where(eq(proposals.id, input.proposalId))

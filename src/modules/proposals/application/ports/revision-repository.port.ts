@@ -15,5 +15,7 @@ export interface CreateRevisionRecordInput {
 
 export interface RevisionRepositoryPort {
   getNextRevisionNumber(proposalId: string): Promise<number>;
+  findById(revisionId: string): Promise<ProposalRevision | null>;
+  findManyByProposalId(proposalId: string): Promise<ProposalRevision[]>;
   createRevision(input: CreateRevisionRecordInput): Promise<ProposalRevision>;
 }

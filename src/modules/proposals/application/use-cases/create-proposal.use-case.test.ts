@@ -13,6 +13,10 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     return [];
   }
 
+  async getDetailById() {
+    return null;
+  }
+
   async getCompanyById() {
     return { id: "company-1", slug: "EGIS" };
   }
@@ -42,6 +46,10 @@ class FakeProposalRepository implements ProposalRepositoryPort {
     };
   }
 
+  async updateBaseFields(): Promise<Proposal> {
+    throw new Error("not implemented");
+  }
+
   async getProposalById(): Promise<Proposal | null> {
     return null;
   }
@@ -58,6 +66,14 @@ class FakeProposalRepository implements ProposalRepositoryPort {
 class FakeRevisionRepository implements RevisionRepositoryPort {
   async getNextRevisionNumber(): Promise<number> {
     return 1;
+  }
+
+  async findById() {
+    return null;
+  }
+
+  async findManyByProposalId() {
+    return [];
   }
 
   async createRevision(): Promise<ProposalRevision> {

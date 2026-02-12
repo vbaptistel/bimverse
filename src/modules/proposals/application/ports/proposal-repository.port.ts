@@ -18,6 +18,11 @@ export interface ListProposalsFilters {
   status?: ProposalStatus | null;
 }
 
+export interface ProposalDetailRecord extends Proposal {
+  companyName: string;
+  companySlug: string;
+}
+
 export interface CreateProposalRecordInput {
   companyId: string;
   code: string;
@@ -40,11 +45,22 @@ export interface UpdateProposalStatusInput {
   finalValueBrl?: number | null;
 }
 
+export interface UpdateProposalBaseFieldsInput {
+  proposalId: string;
+  projectName: string;
+  invitationCode?: string | null;
+  scopeDescription: string;
+  dueDate?: string | null;
+  estimatedValueBrl?: number | null;
+}
+
 export interface ProposalRepositoryPort {
   getCompanyById(companyId: string): Promise<CompanyLookup | null>;
   findMany(filters?: ListProposalsFilters): Promise<Proposal[]>;
+  getDetailById(proposalId: string): Promise<ProposalDetailRecord | null>;
   allocateNextSequence(companyId: string, year: number): Promise<number>;
   createProposal(input: CreateProposalRecordInput): Promise<Proposal>;
+  updateBaseFields(input: UpdateProposalBaseFieldsInput): Promise<Proposal>;
   getProposalById(proposalId: string): Promise<Proposal | null>;
   getProposalStorageContext(
     proposalId: string,

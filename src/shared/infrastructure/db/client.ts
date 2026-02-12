@@ -8,9 +8,10 @@ declare global {
   var __bimverseDb: ReturnType<typeof drizzle> | undefined;
 }
 
-function createDb() {
+export function createDb() {
   const queryClient = postgres(env.databaseUrl(), {
-    max: 1,
+    max: 10,
+    idle_timeout: 20,
     prepare: false,
   });
 
