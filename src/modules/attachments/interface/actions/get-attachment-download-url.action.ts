@@ -11,7 +11,18 @@ import { toActionFailure } from "@/shared/interface/action-result";
 
 export async function getAttachmentDownloadUrlAction(
   rawInput: GetAttachmentDownloadSchema,
-): Promise<ActionResult<{ signedUrl: string; expiresInSeconds: number }>> {
+): Promise<
+  ActionResult<{
+    signedUrl: string;
+    expiresInSeconds: number;
+    attachment: {
+      id: string;
+      proposalId: string;
+      fileName: string;
+      mimeType: string;
+    };
+  }>
+> {
   try {
     const authContext = new SupabaseAuthContextAdapter();
     await authContext.getCurrentUser();

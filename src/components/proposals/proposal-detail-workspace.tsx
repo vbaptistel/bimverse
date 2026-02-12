@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  Eye,
   FileClock,
   FileDown,
   FileText,
@@ -52,6 +53,7 @@ import {
   createAttachmentUploadAction,
   finalizeAttachmentAction,
   getAttachmentDownloadUrlAction,
+  getAttachmentOpenPath,
 } from "@/modules/attachments/interface";
 import {
   cancelProposalRevisionAction,
@@ -62,10 +64,10 @@ import {
   startProposalRevisionCycleAction,
   unlinkProposalSupplierAction,
   updateProposalBaseAction,
-  updateProposalSupplierLinkAction,
   type UpdateProposalBaseSchema,
   updateProposalBaseSchema,
   updateProposalStatusAction,
+  updateProposalSupplierLinkAction,
 } from "@/modules/proposals/interface";
 import { formatCurrencyBrl, parseCurrencyBrlInput } from "@/shared/domain/currency";
 import type { AttachmentCategory, ProposalStatus } from "@/shared/domain/types";
@@ -419,8 +421,8 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     () =>
       selectedSupplierRevisionId
         ? detail.supplierLinks.filter(
-            (link) => link.revisionId === selectedSupplierRevisionId,
-          )
+          (link) => link.revisionId === selectedSupplierRevisionId,
+        )
         : [],
     [detail.supplierLinks, selectedSupplierRevisionId],
   );
@@ -995,7 +997,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-border bg-card px-4 py-4">
+      <section className="rounded-lg border border-border px-4 py-4 bg-gray-100">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -1028,7 +1030,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               {canStartRevision ? (
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleStartRevision}
                   disabled={isPending}
                 >
@@ -1365,13 +1367,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     <th className="px-2 py-2">Revisão</th>
                     <th className="px-2 py-2">Tamanho</th>
                     <th className="px-2 py-2">Enviado em</th>
-                    <th></th>
+                    <th className="px-2 py-2 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {detail.attachments.length === 0 ? (
                     <tr className="border-b border-border">
-                      <td className="px-2 py-4 text-muted-foreground" colSpan={6}>
+                      <td className="px-2 py-4 text-muted-foreground" colSpan={5}>
                         Nenhum anexo cadastrado.
                       </td>
                     </tr>
@@ -1391,16 +1393,31 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                           {dateTimeFormatter.format(new Date(attachment.createdAt))}
                         </td>
                         <td className="px-2 py-3 text-right">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleDownloadAttachment(attachment.id)}
-                            disabled={isPending}
-                          >
-                            {isPending ? <Loader2 className="animate-spin" /> : <FileDown />}
-                            Download
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button asChild type="button" size="sm" variant="outline">
+                              <a
+                                href={getAttachmentOpenPath(
+                                  detail.proposal.id,
+                                  attachment.id,
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Eye />
+                                Visualizar
+                              </a>
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleDownloadAttachment(attachment.id)}
+                              disabled={isPending}
+                            >
+                              {isPending ? <Loader2 className="animate-spin" /> : <FileDown />}
+                              Download
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))

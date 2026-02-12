@@ -71,5 +71,11 @@ describe("GetAttachmentDownloadUrlUseCase", () => {
 
     expect(output.signedUrl).toBe("https://signed-download");
     expect(output.expiresInSeconds).toBe(300);
+    expect(output.attachment).toEqual({
+      id: "att-1",
+      proposalId: "proposal-1",
+      fileName: "arquivo.pdf",
+      mimeType: "application/pdf",
+    });
   });
 });

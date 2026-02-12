@@ -10,6 +10,12 @@ export interface GetAttachmentDownloadUrlInput {
 export interface GetAttachmentDownloadUrlOutput {
   signedUrl: string;
   expiresInSeconds: number;
+  attachment: {
+    id: string;
+    proposalId: string;
+    fileName: string;
+    mimeType: string;
+  };
 }
 
 export class GetAttachmentDownloadUrlUseCase
@@ -37,6 +43,12 @@ export class GetAttachmentDownloadUrlUseCase
     return {
       signedUrl,
       expiresInSeconds,
+      attachment: {
+        id: attachment.id,
+        proposalId: attachment.proposalId,
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+      },
     };
   }
 }
