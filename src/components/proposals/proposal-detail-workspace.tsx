@@ -273,27 +273,40 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   );
 
   const currentEstimatedValueBrl = baseForm.watch("estimatedValueBrl");
-  const pendingCycleEstimatedValueBrl =
-    detail.pendingRevisionCycle?.snapshot.estimatedValueBrl ?? null;
+  const latestRevisionValueBrl = useMemo(() => {
+    const latestRevision = detail.revisions.reduce<
+      (typeof detail.revisions)[number] | null
+    >((latest, revision) => {
+      if (!latest || revision.revisionNumber > latest.revisionNumber) {
+        return revision;
+      }
+      return latest;
+    }, null);
+
+    if (!latestRevision) {
+      return null;
+    }
+
+    return latestRevision.valueAfterBrl ?? latestRevision.valueBeforeBrl ?? null;
+  }, [detail.revisions]);
+
   const revisionDiscountPreview = useMemo(() => {
     if (
-      pendingCycleEstimatedValueBrl === null ||
+      latestRevisionValueBrl === null ||
       currentEstimatedValueBrl == null ||
-      pendingCycleEstimatedValueBrl <= 0 ||
-      currentEstimatedValueBrl >= pendingCycleEstimatedValueBrl
+      latestRevisionValueBrl <= 0 ||
+      currentEstimatedValueBrl >= latestRevisionValueBrl
     ) {
       return null;
     }
 
-    const discountBrl = Number(
-      (pendingCycleEstimatedValueBrl - currentEstimatedValueBrl).toFixed(2),
-    );
+    const discountBrl = Number((latestRevisionValueBrl - currentEstimatedValueBrl).toFixed(2));
     const discountPercent = Number(
-      ((discountBrl / pendingCycleEstimatedValueBrl) * 100).toFixed(2),
+      ((discountBrl / latestRevisionValueBrl) * 100).toFixed(2),
     );
 
     return { discountBrl, discountPercent };
-  }, [pendingCycleEstimatedValueBrl, currentEstimatedValueBrl]);
+  }, [latestRevisionValueBrl, currentEstimatedValueBrl]);
 
   const latestRevisionNumber = useMemo(
     () =>
@@ -776,10 +789,10 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label>Valor no início do ciclo</Label>
-                      <p className="rounded-md border bg-white px-3 py-2 text-sm">
-                        {pendingCycleEstimatedValueBrl !== null
-                          ? formatCurrencyBrl(pendingCycleEstimatedValueBrl)
+                      <Label>Valor da última revisão</Label>
+                      <p className="rounded-md border bg-gray-100 px-3 py-2 text-sm">
+                        {latestRevisionValueBrl !== null
+                          ? formatCurrencyBrl(latestRevisionValueBrl)
                           : "—"}
                       </p>
                     </div>
@@ -794,7 +807,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                         ({revisionDiscountPreview.discountPercent.toFixed(2)}%)
                       </>
                     ) : (
-                      "Sem desconto calculado no momento (valor atual igual ou maior que o valor inicial do ciclo)."
+                      "Sem desconto calculado no momento (valor atual igual ou maior que o valor da última revisão)."
                     )}
                   </div>
                 </div>
@@ -1036,13 +1049,14 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                   <th className="px-2 py-2">Motivo</th>
                   <th className="px-2 py-2">Antes</th>
                   <th className="px-2 py-2">Depois</th>
+                  <th className="px-2 py-2">% desconto</th>
                   <th className="px-2 py-2">Data</th>
                 </tr>
               </thead>
               <tbody>
                 {detail.revisions.length === 0 ? (
                   <tr className="border-b border-border">
-                    <td className="px-2 py-4 text-muted-foreground" colSpan={5}>
+                    <td className="px-2 py-4 text-muted-foreground" colSpan={6}>
                       Nenhuma revisão registrada.
                     </td>
                   </tr>
@@ -1059,6 +1073,11 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                       <td className="px-2 py-3 text-muted-foreground">
                         {revision.valueAfterBrl !== null
                           ? formatCurrencyBrl(revision.valueAfterBrl)
+                          : "—"}
+                      </td>
+                      <td className="px-2 py-3 text-muted-foreground">
+                        {revision.discountPercent !== null
+                          ? `${revision.discountPercent.toFixed(2)}%`
                           : "—"}
                       </td>
                       <td className="px-2 py-3 text-xs text-muted-foreground">
@@ -1093,15 +1112,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="px-2 py-2">Arquivo</th>
-                    <th className="px-2 py-2">Categoria</th>
                     <th className="px-2 py-2">Revisão</th>
                     <th className="px-2 py-2">Tamanho</th>
-                    <th className="px-2 py-2">Enviado em</th>
-                    <th className="px-2 py-2 text-right">Ações</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1115,7 +1132,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                     detail.attachments.map((attachment) => (
                       <tr key={attachment.id} className="border-b border-border">
                         <td className="px-2 py-3">{attachment.fileName}</td>
-                        <td className="px-2 py-3">{attachment.category}</td>
                         <td className="px-2 py-3">
                           {attachment.revisionId
                             ? `R${revisionById.get(attachment.revisionId)?.revisionNumber ?? "?"}`
@@ -1123,9 +1139,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                         </td>
                         <td className="px-2 py-3 text-muted-foreground">
                           {formatBytes(attachment.fileSizeBytes)}
-                        </td>
-                        <td className="px-2 py-3 text-xs text-muted-foreground">
-                          {dateTimeFormatter.format(new Date(attachment.createdAt))}
                         </td>
                         <td className="px-2 py-3 text-right">
                           <Button
