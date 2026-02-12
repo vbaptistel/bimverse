@@ -11,10 +11,20 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function isBypassRole(value: string | undefined): boolean {
+  return value === "admin" || value === "comercial";
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  const bypassUserId = process.env.DEV_BYPASS_USER_ID;
+  const bypassRole = process.env.DEV_BYPASS_ROLE;
+  if (bypassUserId && isBypassRole(bypassRole)) {
     return NextResponse.next();
   }
 

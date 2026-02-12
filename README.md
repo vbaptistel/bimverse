@@ -108,7 +108,7 @@ tests/e2e/            # testes Playwright
 | `DEV_BYPASS_USER_ID` | Não | ID fixo para contexto de usuário em desenvolvimento. |
 | `DEV_BYPASS_ROLE` | Não | Papel do bypass (`admin` ou `comercial`). |
 
-Observação: o bypass é útil para contexto de autenticação no backend, mas o acesso às rotas protegidas continua dependendo da sessão validada no `proxy.ts`.
+Observação: quando `DEV_BYPASS_USER_ID` e `DEV_BYPASS_ROLE` estão definidos com valores válidos, o bypass também libera as rotas protegidas no `proxy.ts` para desenvolvimento/E2E local.
 
 ## Scripts
 
@@ -159,3 +159,9 @@ As migrations versionadas ficam em `drizzle/`.
   - 80% statements/lines/functions
   - 60% branches
 - testes E2E em `tests/e2e/`, com execução desktop e mobile no Chromium.
+
+### Segurança E2E
+
+- `playwright.config.ts` injeta `DEV_BYPASS_*` no servidor E2E para evitar criação de usuários reais.
+- `tests/e2e/global-setup.ts` bloqueia execução quando `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` ou `NEXT_PUBLIC_APP_URL` apontam para hosts não locais.
+- Para liberar execução remota de forma explícita (por sua conta), use `E2E_ALLOW_REMOTE_ENV=1`.
