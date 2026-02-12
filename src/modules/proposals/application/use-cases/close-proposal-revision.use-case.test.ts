@@ -106,6 +106,8 @@ class FakeProposalRepository implements ProposalRepositoryPort {
 }
 
 class FakeRevisionRepository implements RevisionRepositoryPort {
+  lastCreatedInput: CreateRevisionRecordInput | null = null;
+
   async getNextRevisionNumber(): Promise<number> {
     return 2;
   }
@@ -119,6 +121,8 @@ class FakeRevisionRepository implements RevisionRepositoryPort {
   }
 
   async createRevision(input: CreateRevisionRecordInput): Promise<ProposalRevision> {
+    this.lastCreatedInput = input;
+
     return {
       id: "revision-2",
       proposalId: input.proposalId,
@@ -250,8 +254,6 @@ describe("CloseProposalRevisionUseCase", () => {
       proposalId: "proposal-1",
       reason: "Solicitação do cliente",
       scopeChanges: "Ajustes no escopo executivo",
-      discountBrl: 100,
-      discountPercent: 8,
       notes: "Ajuste final",
       fileName: "BV-EGIS-2026-BIM-001-R2.pdf",
       storagePath: "egis/2026/BV-EGIS-2026-BIM-001/revisions/R2/proposta_word/doc.pdf",
@@ -267,6 +269,42 @@ describe("CloseProposalRevisionUseCase", () => {
       "revision_cycle_closed",
       "status_changed",
     ]);
+  });
+
+  it("calcula desconto automaticamente quando o valor da proposta reduz", async () => {
+    const proposalRepository = new FakeProposalRepository({
+      ...buildProposal("em_revisao"),
+      estimatedValueBrl: 900,
+    });
+    const revisionRepository = new FakeRevisionRepository();
+    const attachmentRepository = new FakeAttachmentRepository();
+    const storagePort = new FakeStoragePort(true);
+    const activityLogRepository = new FakeActivityLogRepository([
+      buildOpenedCycleEvent(),
+    ]);
+
+    const useCase = new CloseProposalRevisionUseCase(
+      proposalRepository,
+      revisionRepository,
+      attachmentRepository,
+      storagePort,
+      activityLogRepository,
+    );
+
+    const output = await useCase.execute({
+      proposalId: "proposal-1",
+      reason: "Ajuste comercial",
+      fileName: "BV-EGIS-2026-BIM-001-R2.pdf",
+      storagePath: "egis/2026/BV-EGIS-2026-BIM-001/revisions/R2/proposta_word/doc.pdf",
+      mimeType: "application/pdf",
+      fileSizeBytes: 1024,
+      closedBy: "user-2",
+    });
+
+    expect(output.revision.discountBrl).toBe(100);
+    expect(output.revision.discountPercent).toBe(10);
+    expect(revisionRepository.lastCreatedInput?.valueBeforeBrl).toBe(1000);
+    expect(revisionRepository.lastCreatedInput?.valueAfterBrl).toBe(900);
   });
 
   it("bloqueia fechamento quando proposta não está em revisão", async () => {

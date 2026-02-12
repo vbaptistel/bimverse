@@ -20,14 +20,33 @@ export interface CloseProposalRevisionInput {
   proposalId: string;
   reason: string;
   scopeChanges?: string | null;
-  discountBrl?: number | null;
-  discountPercent?: number | null;
   notes?: string | null;
   fileName: string;
   storagePath: string;
   mimeType: string;
   fileSizeBytes: number;
   closedBy: string;
+}
+
+function calculateAutomaticDiscount(
+  valueBeforeBrl: number | null,
+  valueAfterBrl: number | null,
+): { discountBrl: number | null; discountPercent: number | null } {
+  if (valueBeforeBrl === null || valueAfterBrl === null) {
+    return { discountBrl: null, discountPercent: null };
+  }
+
+  if (valueAfterBrl >= valueBeforeBrl) {
+    return { discountBrl: null, discountPercent: null };
+  }
+
+  const discountBrl = Number((valueBeforeBrl - valueAfterBrl).toFixed(2));
+  if (valueBeforeBrl === 0) {
+    return { discountBrl, discountPercent: null };
+  }
+
+  const discountPercent = Number(((discountBrl / valueBeforeBrl) * 100).toFixed(2));
+  return { discountBrl, discountPercent };
 }
 
 export interface CloseProposalRevisionOutput {
@@ -124,12 +143,14 @@ export class CloseProposalRevisionUseCase
     }
 
     const revision = await this.revisionRepository.createRevision({
+      ...calculateAutomaticDiscount(
+        pendingCycle.snapshot.estimatedValueBrl,
+        proposal.estimatedValueBrl,
+      ),
       proposalId: proposal.id,
       revisionNumber: nextRevisionNumber,
       reason: input.reason.trim(),
       scopeChanges: input.scopeChanges?.trim() || null,
-      discountBrl: input.discountBrl ?? null,
-      discountPercent: input.discountPercent ?? null,
       valueBeforeBrl: pendingCycle.snapshot.estimatedValueBrl,
       valueAfterBrl: proposal.estimatedValueBrl,
       notes: input.notes?.trim() || null,

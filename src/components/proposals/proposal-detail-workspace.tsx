@@ -18,10 +18,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Card,
   CardContent,
@@ -108,13 +108,17 @@ interface ProposalDetailWorkspaceProps {
   detail: ProposalDetailPresenter;
 }
 
-interface CloseRevisionFormValues {
-  reason: string;
-  scopeChanges: string | null;
-  discountBrl: number | null;
-  discountPercent: number | null;
-  notes: string | null;
-}
+const closeRevisionFormSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Motivo deve ter pelo menos 3 caracteres")
+    .max(300),
+  scopeChanges: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+type CloseRevisionFormValues = z.infer<typeof closeRevisionFormSchema>;
 
 interface AttachmentUploadFormValues {
   revisionId: string | null;
@@ -180,7 +184,8 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     status: ManualProposalStatus;
   } | null>(null);
-  const [discountType, setDiscountType] = useState<"brl" | "percent">("brl");
+  const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
+  const [isTimelineModalOpen, setTimelineModalOpen] = useState(false);
 
   const isFinalStatus =
     detail.proposal.status === "ganha" ||
@@ -220,11 +225,10 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   });
 
   const closeRevisionForm = useForm<CloseRevisionFormValues>({
+    resolver: zodResolver(closeRevisionFormSchema),
     defaultValues: {
       reason: "",
       scopeChanges: null,
-      discountBrl: null,
-      discountPercent: null,
       notes: null,
     },
   });
@@ -442,9 +446,6 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         proposalId: detail.proposal.id,
         reason: values.reason,
         scopeChanges: toNullableText(values.scopeChanges),
-        discountBrl: discountType === "brl" ? values.discountBrl ?? null : null,
-        discountPercent:
-          discountType === "percent" ? values.discountPercent ?? null : null,
         notes: toNullableText(values.notes),
         fileName: file.name,
         storagePath: prepared.data.path,
@@ -684,13 +685,34 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
               </Badge>
             </CardHeader>
             <CardContent>
-              <form className="grid gap-5 2xl:grid-cols-12" onSubmit={handleCloseRevision}>
-                <div className="rounded-md border border-amber-300 bg-amber-100/80 px-3 py-2 text-sm text-amber-900 2xl:col-span-12">
+              <form className="grid gap-4" onSubmit={handleCloseRevision}>
+                <div className="rounded-md border border-amber-300 bg-amber-100/80 px-3 py-2 text-sm text-amber-900">
                   Feche a revisão com o documento atualizado para voltar a proposta para
                   status enviada.
                 </div>
 
-                <div className="grid gap-4 2xl:col-span-8">
+                <div className="grid gap-2 rounded-lg border border-amber-300 bg-amber-100/80 p-4">
+                  <p className="text-sm font-semibold text-amber-900">
+                    1. Documento da proposta revisada
+                  </p>
+                  <Label htmlFor="revisionDocumentFile">Arquivo da proposta revisada</Label>
+                  <Input
+                    id="revisionDocumentFile"
+                    className="bg-white disabled:bg-white cursor-pointer"
+                    type="file"
+                    disabled={isPending}
+                    accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                  />
+                  <p className="text-xs text-amber-900/80">
+                    O desconto da revisão será calculado automaticamente pela variação do
+                    valor estimado da proposta.
+                  </p>
+                </div>
+
+                <div className="grid gap-2 rounded-lg border border-amber-300 bg-amber-100/50 p-4">
+                  <p className="text-sm font-semibold text-amber-900">
+                    2. Motivo da revisão
+                  </p>
                   <div className="grid gap-2">
                     <Label htmlFor="closeRevisionReason">Motivo</Label>
                     <Input
@@ -699,9 +721,22 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                       disabled={isPending}
                       {...closeRevisionForm.register("reason")}
                     />
+                    {closeRevisionForm.formState.errors.reason && (
+                      <p className="text-sm text-destructive">
+                        {closeRevisionForm.formState.errors.reason.message}
+                      </p>
+                    )}
                   </div>
+                </div>
 
-                  <div className="grid gap-2 lg:grid-cols-2">
+                <details className="rounded-lg border border-amber-300 bg-amber-100/40 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-amber-900">
+                    3. Detalhes opcionais da revisão
+                  </summary>
+                  <div className="mt-3 grid gap-2 text-xs text-amber-900/80">
+                    <p>Preencha somente se quiser registrar contexto adicional.</p>
+                  </div>
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
                     <div className="grid gap-2">
                       <Label htmlFor="closeRevisionScopeChanges">Mudanças de escopo</Label>
                       <Textarea
@@ -728,88 +763,9 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                       />
                     </div>
                   </div>
-                </div>
+                </details>
 
-                <aside className="grid content-start gap-4 rounded-lg border border-amber-300 bg-amber-100/80 p-4 2xl:col-span-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="revisionDocumentFile">
-                      Arquivo da proposta revisada
-                    </Label>
-                    <Input
-                      id="revisionDocumentFile"
-                      className="bg-white disabled:bg-white cursor-pointer"
-                      type="file"
-                      disabled={isPending}
-                      accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>Desconto</Label>
-                    <ButtonGroup className="h-9 w-full rounded-lg border border-input bg-white">
-                      <Select
-                        value={discountType}
-                        onValueChange={(value: "brl" | "percent") => {
-                          setDiscountType(value);
-                          closeRevisionForm.setValue(
-                            value === "brl" ? "discountPercent" : "discountBrl",
-                            null
-                          );
-                        }}
-                        disabled={isPending}
-                      >
-                        <SelectTrigger className="h-9 min-w-10 rounded-r-none border-0 bg-transparent font-mono shadow-none focus:ring-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="min-w-10">
-                          <SelectItem value="brl">R$</SelectItem>
-                          <SelectItem value="percent">%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {discountType === "brl" ? (
-                        <Controller
-                          name="discountBrl"
-                          control={closeRevisionForm.control}
-                          render={({ field }) => (
-                            <Input
-                              id="closeRevisionDiscountBrl"
-                              className="h-9 rounded-l-none border-0 bg-transparent shadow-none focus-visible:ring-0"
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="0,00"
-                              disabled={isPending}
-                              value={
-                                field.value === null || field.value === undefined
-                                  ? ""
-                                  : formatCurrencyBrl(field.value)
-                              }
-                              onBlur={field.onBlur}
-                              onChange={(event) =>
-                                field.onChange(
-                                  parseCurrencyBrlInput(event.target.value)
-                                )
-                              }
-                            />
-                          )}
-                        />
-                      ) : (
-                        <Input
-                          id="closeRevisionDiscountPercent"
-                          className="h-9 rounded-l-none border-0 bg-transparent shadow-none focus-visible:ring-0"
-                          type="number"
-                          step="0.01"
-                          placeholder="0"
-                          disabled={isPending}
-                          {...closeRevisionForm.register("discountPercent", {
-                            setValueAs: (value) => toNullableNumber(value),
-                          })}
-                        />
-                      )}
-                    </ButtonGroup>
-                  </div>
-                </aside>
-
-                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-300/60 pt-4 2xl:col-span-12">
+                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-300/60 pt-4">
                   <Button
                     type="button"
                     variant="secondary"
@@ -1207,15 +1163,36 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         </Card>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      <section>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryModalOpen(true)}
+          >
+            <History size={16} /> Histórico de atividades
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setTimelineModalOpen(true)}
+          >
+            <FileClock size={16} /> Cronologia e prazos
+          </Button>
+        </div>
+      </section>
+
+      <Dialog open={isHistoryModalOpen} onOpenChange={setHistoryModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <History size={16} /> Histórico de atividades
-            </CardTitle>
-            <CardDescription>Eventos detalhados da proposta.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            </DialogTitle>
+            <DialogDescription>Eventos detalhados da proposta.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
             {detail.history.length === 0 ? (
               <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
                 Nenhum evento disponível.
@@ -1234,17 +1211,19 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      <Dialog open={isTimelineModalOpen} onOpenChange={setTimelineModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <FileClock size={16} /> Cronologia e prazos
-            </CardTitle>
-            <CardDescription>Marcos principais em ordem cronológica.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            </DialogTitle>
+            <DialogDescription>Marcos principais em ordem cronológica.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
             {detail.timeline.length === 0 ? (
               <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
                 Nenhum marco disponível.
@@ -1262,9 +1241,9 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={isStatusReasonModalOpen}

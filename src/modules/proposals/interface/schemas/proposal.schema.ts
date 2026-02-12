@@ -53,8 +53,6 @@ export const closeProposalRevisionSchema = z.object({
   proposalId: z.string().uuid(),
   reason: z.string().trim().min(3).max(300),
   scopeChanges: z.string().trim().max(10000).optional().nullable(),
-  discountBrl: z.number().nonnegative().optional().nullable(),
-  discountPercent: z.number().nonnegative().max(100).optional().nullable(),
   notes: z.string().trim().max(4000).optional().nullable(),
   fileName: z.string().trim().min(1).max(255),
   storagePath: z.string().trim().min(3).max(2000),
