@@ -179,11 +179,8 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
   const [isPending, startTransition] = useTransition();
   const [isAttachmentModalOpen, setAttachmentModalOpen] = useState(false);
   const [isSupplierModalOpen, setSupplierModalOpen] = useState(false);
-  const [isStatusReasonModalOpen, setStatusReasonModalOpen] = useState(false);
+  const [isStatusModalOpen, setStatusModalOpen] = useState(false);
   const [statusReason, setStatusReason] = useState("");
-  const [pendingStatusChange, setPendingStatusChange] = useState<{
-    status: ManualProposalStatus;
-  } | null>(null);
   const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
   const [isTimelineModalOpen, setTimelineModalOpen] = useState(false);
 
@@ -317,6 +314,9 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       ),
     [detail.revisions],
   );
+  const selectedStatusInModal = statusForm.watch("status");
+  const statusRequiresReasonInModal =
+    selectedStatusInModal === "perdida" || selectedStatusInModal === "cancelada";
 
   const handleBaseSave = baseForm.handleSubmit((values) => {
     const criticalFieldsChanged =
@@ -349,10 +349,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     });
   });
 
-  const closeStatusReasonModal = () => {
-    setStatusReasonModalOpen(false);
+  const closeStatusModal = () => {
+    setStatusModalOpen(false);
     setStatusReason("");
-    setPendingStatusChange(null);
+    statusForm.reset({
+      proposalId: detail.proposal.id,
+      status: detail.proposal.status,
+    });
   };
 
   const handleStartRevision = () => {
@@ -380,12 +383,10 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
     }
 
     const nextStatus = values.status as ManualProposalStatus;
-    if (nextStatus === "perdida" || nextStatus === "cancelada") {
-      setPendingStatusChange({
-        status: nextStatus,
-      });
-      setStatusReason("");
-      setStatusReasonModalOpen(true);
+    const requiresReason = nextStatus === "perdida" || nextStatus === "cancelada";
+    const reason = toNullableText(statusReason);
+    if (requiresReason && !reason) {
+      toast.error("Motivo é obrigatório para status perdida ou cancelada.");
       return;
     }
 
@@ -393,7 +394,7 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       const result = await updateProposalStatusAction({
         proposalId: values.proposalId,
         status: nextStatus,
-        outcomeReason: null,
+        outcomeReason: requiresReason ? reason : null,
       });
 
       if (!result.success) {
@@ -401,44 +402,13 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         return;
       }
 
+      closeStatusModal();
       toast.success(
         `Status atualizado para ${PROPOSAL_STATUS_LABELS[result.data.status]}.`,
       );
       router.refresh();
     });
   });
-
-  const handleConfirmStatusReason = () => {
-    if (!pendingStatusChange) {
-      toast.error("Selecione um status antes de confirmar.");
-      return;
-    }
-
-    const reason = toNullableText(statusReason);
-    if (!reason) {
-      toast.error("Motivo é obrigatório.");
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await updateProposalStatusAction({
-        proposalId: detail.proposal.id,
-        status: pendingStatusChange.status,
-        outcomeReason: reason,
-      });
-
-      if (!result.success) {
-        toast.error(`Erro: ${result.error}`);
-        return;
-      }
-
-      closeStatusReasonModal();
-      toast.success(
-        `Status atualizado para ${PROPOSAL_STATUS_LABELS[result.data.status]}.`,
-      );
-      router.refresh();
-    });
-  };
 
   const handleCloseRevision = closeRevisionForm.handleSubmit((values) => {
     startTransition(async () => {
@@ -712,15 +682,34 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
             </p>
           </div>
 
-          <div className="flex flex-col items-start sm:items-end">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Valor atual
-            </span>
-            <span className="text-2xl font-semibold">
-              {detail.currentValueBrl !== null
-                ? formatCurrencyBrl(detail.currentValueBrl)
-                : "—"}
-            </span>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <div className="flex flex-col items-start sm:items-end">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Valor atual
+              </span>
+              <span className="text-2xl font-semibold">
+                {detail.currentValueBrl !== null
+                  ? formatCurrencyBrl(detail.currentValueBrl)
+                  : "—"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              {canStartRevision ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleStartRevision}
+                  disabled={isPending}
+                >
+                  {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
+                  Criar nova revisão
+                </Button>
+              ) : null}
+              <Button type="button" onClick={() => setStatusModalOpen(true)} disabled={isPending}>
+                Alterar status
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -893,28 +882,16 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <CardTitle>Dados e status da proposta</CardTitle>
+              <CardTitle>Dados da proposta</CardTitle>
               <CardDescription>
                 Empresa: {detail.proposal.companyName} | Ano: {detail.proposal.year} |
                 Criada em {dateTimeFormatter.format(new Date(detail.proposal.createdAt))}
               </CardDescription>
             </div>
-
-            {canStartRevision ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleStartRevision}
-                disabled={isPending}
-              >
-                {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-                Criar nova revisão
-              </Button>
-            ) : null}
           </CardHeader>
 
-          <CardContent className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
-            <form className="grid gap-4 self-start" onSubmit={handleBaseSave}>
+          <CardContent>
+            <form className="grid gap-4" onSubmit={handleBaseSave}>
               <div className="grid gap-2">
                 <Label htmlFor="projectName">Projeto</Label>
                 <Input
@@ -959,71 +936,10 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
                 />
               </div>
 
-              {!isInReview && !isFinalStatus ? (
-                <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-                  Campos críticos (escopo, prazo e valor estimado) só ficam editáveis
-                  após clicar em Criar nova revisão.
-                </p>
-              ) : null}
-
               <div className="flex justify-end">
                 <Button type="submit" disabled={isPending || isFinalStatus}>
                   {isPending ? <Loader2 className="animate-spin" /> : <Save />}
                   Salvar dados
-                </Button>
-              </div>
-            </form>
-
-            <form
-              className="grid gap-4 self-start rounded-lg border border-border bg-muted/20 p-4"
-              onSubmit={handleStatusSave}
-            >
-              <h3 className="text-sm font-medium">Status da proposta</h3>
-              <Controller
-                name="status"
-                control={statusForm.control}
-                render={({ field }) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="proposalStatus">Status</Label>
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => field.onChange(value as ProposalStatus)}
-                      disabled={isPending || isInReview}
-                    >
-                      <SelectTrigger id="proposalStatus" className="h-9 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isInReview ? (
-                          <SelectItem value="em_revisao" disabled>
-                            {PROPOSAL_STATUS_LABELS.em_revisao}
-                          </SelectItem>
-                        ) : null}
-                        {MANUAL_STATUS_OPTIONS.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {PROPOSAL_STATUS_LABELS[status]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              />
-
-              {isInReview ? (
-                <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-                  Status manual bloqueado durante revisão pendente.
-                </p>
-              ) : (
-                <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-                  Motivo será solicitado em modal ao mudar para perdida ou cancelada.
-                </p>
-              )}
-
-              <div className="flex justify-end pt-1">
-                <Button type="submit" disabled={isPending || isInReview}>
-                  {isPending ? <Loader2 className="animate-spin" /> : <Save />}
-                  Atualizar status
                 </Button>
               </div>
             </form>
@@ -1325,53 +1241,88 @@ export function ProposalDetailWorkspace({ detail }: ProposalDetailWorkspaceProps
       </Dialog>
 
       <Dialog
-        open={isStatusReasonModalOpen}
+        open={isStatusModalOpen}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
-            closeStatusReasonModal();
+            closeStatusModal();
             return;
           }
 
-          setStatusReasonModalOpen(true);
+          statusForm.reset({
+            proposalId: detail.proposal.id,
+            status: detail.proposal.status,
+          });
+          setStatusReason("");
+          setStatusModalOpen(true);
         }}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Confirmar alteração de status</DialogTitle>
+            <DialogTitle>Alterar status da proposta</DialogTitle>
             <DialogDescription>
-              Informe o motivo para marcar a proposta como{" "}
-              {pendingStatusChange
-                ? PROPOSAL_STATUS_LABELS[pendingStatusChange.status].toLowerCase()
-                : "finalizada"}
-              .
+              Selecione o novo status da proposta.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="grid gap-2">
-            <Label htmlFor="statusReason">Motivo</Label>
-            <Textarea
-              id="statusReason"
-              rows={4}
-              value={statusReason}
-              onChange={(event) => setStatusReason(event.target.value)}
-              disabled={isPending}
+          <form className="grid gap-4" onSubmit={handleStatusSave}>
+            <Controller
+              name="status"
+              control={statusForm.control}
+              render={({ field }) => (
+                <div className="grid gap-2">
+                  <Label htmlFor="proposalStatusModal">Status</Label>
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value as ProposalStatus)}
+                    disabled={isPending || isInReview}
+                  >
+                    <SelectTrigger id="proposalStatusModal" className="h-9 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isInReview ? (
+                        <SelectItem value="em_revisao" disabled>
+                          {PROPOSAL_STATUS_LABELS.em_revisao}
+                        </SelectItem>
+                      ) : null}
+                      {MANUAL_STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {PROPOSAL_STATUS_LABELS[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             />
-          </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={closeStatusReasonModal}
-              disabled={isPending}
-            >
-              Cancelar
-            </Button>
-            <Button type="button" onClick={handleConfirmStatusReason} disabled={isPending}>
-              {isPending ? <Loader2 className="animate-spin" /> : <Save />}
-              Confirmar status
-            </Button>
-          </DialogFooter>
+            {statusRequiresReasonInModal ? (
+              <div className="grid gap-2">
+                <Label htmlFor="statusReasonInline">Motivo</Label>
+                <Textarea
+                  id="statusReasonInline"
+                  rows={4}
+                  value={statusReason}
+                  onChange={(event) => setStatusReason(event.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeStatusModal}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending || isInReview}>
+                {isPending ? <Loader2 className="animate-spin" /> : <Save />}
+                Confirmar status
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
